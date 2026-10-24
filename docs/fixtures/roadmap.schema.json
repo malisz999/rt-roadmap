@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rt.local/schema/roadmap-v1.json",
+  "title": "rt roadmap input, format version 1",
+  "description": "Input file for the rt roadmap renderer. Cross-reference rules (team ids, size keys, uniqueness, one of size/ongoing) are also enforced by rt itself; see the specification, section 3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "roadmap",
+    "sizes",
+    "subdomains",
+    "projects"
+  ],
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Format version. Must be 1."
+    },
+    "roadmap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "horizon": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/month",
+              "description": "First month shown, and the anchor for projects without a start. Automatic when omitted."
+            },
+            "end": {
+              "$ref": "#/$defs/month",
+              "description": "Last month shown, inclusive. Automatic when omitted."
+            }
+          }
+        },
+        "today": {
+          "$ref": "#/$defs/date",
+          "description": "Date of the Today line. Defaults to the current date."
+        },
+        "month_width": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 400,
+          "default": 120
+        },
+        "content_language": {
+          "type": "string",
+          "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+          "description": "BCP 47 language of user text, e.g. pl. Written as a lang attribute on user text."
+        }
+      }
+    },
+    "sizes": {
+      "type": "object",
+      "description": "T-shirt size label -> length in whole weeks. Declaration order is legend order.",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9+]{1,8}$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 520
+      }
+    },
+    "scheduling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on_conflict": {
+          "enum": [
+            "delay",
+            "overflow",
+            "error"
+          ],
+          "default": "delay"
+        },
+        "adjacency_gap_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 90,
+          "default": 14
+        }
+      }
+    },
+    "subdomains": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "teams"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/team"
+            }
+          }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "description": "Scheduled in exactly this order; dependencies must point upwards.",
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,39}$"
+    },
+    "month": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+      "description": "YYYY-MM"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+      "description": "YYYY-MM-DD"
+    },
+    "headcount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 999,
+      "default": 0
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "parallel_projects"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "Unique across all teams in the file."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "parallel_projects": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "capacity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "developers": {
+              "$ref": "#/$defs/headcount"
+            },
+            "product_managers": {
+              "$ref": "#/$defs/headcount"
+            },
+            "analysts": {
+              "$ref": "#/$defs/headcount"
+            },
+            "testers": {
+              "$ref": "#/$defs/headcount"
+            }
+          }
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "team"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "Optional stable handle, unique among projects; usable in depends_on."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Any Unicode text, e.g. Polish. Unique within its team."
+        },
+        "team": {
+          "$ref": "#/$defs/id",
+          "description": "Must equal a team id."
+        },
+        "start": {
+          "$ref": "#/$defs/month",
+          "description": "Requested start month. Omit to start as soon as dependencies have ended and a slot is free."
+        },
+        "size": {
+          "type": "string",
+          "description": "Must be a key of sizes."
+        },
+        "ongoing": {
+          "type": "boolean"
+        },
+        "depends_on": {
+          "description": "Finish-to-start dependencies: project ids, or project names unique in the file. Must refer to projects earlier in the file.",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true
+            }
+          ]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "color": {
+          "anyOf": [
+            {
+              "enum": [
+                "indigo",
+                "green",
+                "orange",
+                "pink",
+                "sky",
+                "amber",
+                "violet",
+                "teal",
+                "lime",
+                "sand"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            }
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "size"
+          ],
+          "not": {
+            "properties": {
+              "ongoing": {
+                "const": true
+              }
+            },
+            "required": [
+              "ongoing"
+            ]
+          }
+        },
+        {
+          "required": [
+            "ongoing"
+          ],
+          "properties": {
+            "ongoing": {
+              "const": true
+            }
+          },
+          "not": {
+            "required": [
+              "size"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

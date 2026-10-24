@@ -1,0 +1,6 @@
+﻿Projekt;Rozmiar;Zespół;Start;Zależności;Ciągły;Opis;Właściciel
+Płatności cykliczne BLIK;L;BLIK i przelewy;01.01.2027;;nie;"Subskrypcje; płatności cykliczne";Anna
+BLIK w aplikacji;M;Aplikacja mobilna;;Płatności cykliczne BLIK;;;Piotr
+Utrzymanie aplikacji;;Aplikacja mobilna;2027-02;;tak;;Ewa
+Widżety Android;S;app;2027-03-15;;;;
+"Portfele cyfrowe (Apple Pay; Google Pay)";M;BLIK i przelewy;;Płatności cykliczne BLIK|BLIK w aplikacji;;;Anna

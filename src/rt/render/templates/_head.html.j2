@@ -1,0 +1,13 @@
+<header class="rt-head">
+<div class="rt-head__titles">
+<h1 class="rt-head__title"{{ L }}>{{ page.title }}</h1>
+{% if page.subtitle %}
+<p class="rt-head__subtitle"{{ L }}>{{ page.subtitle }}</p>
+{% endif %}
+</div>
+<div class="rt-head__meta">
+<span class="rt-head__chip">Horizon <strong>{{ page.horizon_label }}</strong> · {{ page.horizon_months }}</span>
+<span class="rt-head__chip"><strong>{{ page.as_of }}</strong></span>
+<span class="rt-head__chip">{{ page.mode_label }}</span>
+</div>
+</header>

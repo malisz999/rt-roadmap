@@ -1,0 +1,19 @@
+<section class="rt-legend" aria-label="Legend">
+<div class="rt-legend__group">
+<span class="rt-legend__title">Sizes</span>
+{% for s in page.legend.sizes %}
+<span class="rt-legend__size"><strong>{{ s.label }}</strong> {{ s.weeks }}</span>
+{% endfor %}
+</div>
+<div class="rt-legend__group">
+<span class="rt-legend__title">Symbols</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--ongoing" aria-hidden="true">∞</span>Ongoing</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--delayed" aria-hidden="true"></span><span class="rt-sym__pill" aria-hidden="true">+2w</span>Delayed from requested start</span>
+<span class="rt-legend__item"><svg class="rt-sym rt-sym--dep" width="30" height="16" viewBox="0 0 30 16" aria-hidden="true" focusable="false"><path d="M1 3H7V13H24" fill="none"/><path class="rt-sym__head" d="M23 10L29 13L23 16Z"/></svg>Dependency</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--glyph" aria-hidden="true">↤</span>Depends on a project not linked here</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--glyph" aria-hidden="true">‹ ›</span>Clipped at horizon</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--over" aria-hidden="true"></span>Over capacity</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--quarter" aria-hidden="true"></span>Quarter start</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--today" aria-hidden="true"></span>Today</span>
+</div>
+</section>

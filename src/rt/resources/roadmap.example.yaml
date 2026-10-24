@@ -1,0 +1,283 @@
+# yaml-language-server: $schema=./roadmap.schema.json
+# =============================================================================
+#  rt — roadmap input file (format version 1)
+#  Render with:   rt render roadmap.example.yaml
+#  With summary:  rt render roadmap.example.yaml --summary
+#  Check only:    rt validate roadmap.example.yaml
+#
+#  Writing tips
+#  - Indent with spaces (2 per level), never tabs.
+#  - Text after "#" is a comment and is ignored.
+#  - Months are YYYY-MM, dates are YYYY-MM-DD. Quotes are optional.
+#  - Names may use Polish letters: ąćęłńóśźż.
+#  - ORDER MATTERS: subdomains and teams are drawn in the order written here,
+#    and projects are scheduled in the order written here (earlier = higher
+#    priority for a free slot). A dependency must be written ABOVE the
+#    project that depends on it.
+# =============================================================================
+
+version: 1
+
+roadmap:
+  title: Roadmap płatności 2026–2027
+  subtitle: Delivery plan by subdomain and team
+  horizon:
+    start: 2026-10          # first month shown; also the start for projects without "start"
+    end: 2027-06            # last month shown (inclusive)
+  today: 2026-10-23         # draws the Today line; delete to use the current date
+  month_width: 120          # pixels per month column (60–400)
+  content_language: pl      # names and descriptions below are Polish
+
+# T-shirt sizes: exact length in WEEKS. Use any labels you like; the legend
+# lists them in this order.
+sizes:
+  XS: 1
+  S: 2
+  M: 4
+  L: 8
+  XL: 13
+  XXL: 26
+
+scheduling:
+  on_conflict: delay        # delay | overflow | error
+  adjacency_gap_days: 14    # bars closer than this never share a colour
+
+# -----------------------------------------------------------------------------
+#  Subdomains and their teams
+#  parallel_projects = how many projects the team runs at the same time
+#  (one swimlane row per slot). capacity = head count per role (display only).
+# -----------------------------------------------------------------------------
+subdomains:
+  - id: channels
+    name: Kanały płatności
+    description: Metody płatności dla klientów
+    teams:
+      - id: blik
+        name: BLIK i przelewy
+        parallel_projects: 2
+        capacity: { developers: 5, product_managers: 1, analysts: 1, testers: 2 }
+      - id: cards
+        name: Karty
+        parallel_projects: 2
+        capacity: { developers: 6, product_managers: 1, analysts: 2, testers: 2 }
+
+  - id: acquiring
+    name: Acquiring
+    description: Integracje z agentami rozliczeniowymi, rozliczenia, cenniki
+    teams:
+      - id: acq
+        name: Integracje acquirerów
+        parallel_projects: 3
+        capacity:
+          developers: 7
+          product_managers: 1
+          analysts: 2
+          testers: 3
+
+  - id: merchant
+    name: Doświadczenie merchanta
+    description: Panel merchanta i aplikacja mobilna
+    teams:
+      - id: panel
+        name: Panel merchanta
+        parallel_projects: 2
+        capacity: { developers: 4, product_managers: 1, analysts: 1, testers: 1 }
+      - id: app
+        name: Aplikacja mobilna
+        parallel_projects: 2
+        capacity: { developers: 4, product_managers: 1, analysts: 1, testers: 2 }
+
+  - id: platform
+    name: Platforma i utrzymanie
+    description: Utrzymanie, wsparcie i bezpieczeństwo
+    teams:
+      - id: ops
+        name: Utrzymanie i wsparcie
+        parallel_projects: 2
+        capacity: { developers: 3, analysts: 1, testers: 1 }
+      - id: sec
+        name: Cyberbezpieczeństwo
+        parallel_projects: 1
+        capacity: { developers: 2, analysts: 1 }
+
+# -----------------------------------------------------------------------------
+#  Projects — scheduled in exactly this order.
+#  Required: name, team, and EITHER size OR ongoing: true.
+#  Optional:
+#    id          short handle used in depends_on (letters, digits, - and _)
+#    start       YYYY-MM; omit to start as soon as a slot is free
+#    depends_on  [id or name, ...] — starts only after these have ended;
+#                they must be written above this project
+#    description tooltip text
+#    color       palette name or #RRGGBB
+#  Palette names: indigo green orange pink sky amber violet teal lime sand
+# -----------------------------------------------------------------------------
+projects:
+
+  # --- Kanały płatności / BLIK i przelewy ----------------------------------
+  - name: Przebudowa Pay-by-link
+    team: blik
+    size: M
+    start: 2026-10
+  - id: blik-recurring
+    name: Płatności cykliczne BLIK
+    team: blik
+    size: L
+    start: 2026-11
+    description: Cykliczne płatności BLIK dla merchantów subskrypcyjnych
+  - name: Przelewy natychmiastowe (SCT Inst)
+    team: blik
+    size: XL
+    start: 2027-01
+  - name: Płatności odroczone (BNPL) – pilot
+    team: blik
+    size: M
+    start: 2027-03
+
+  # --- Kanały płatności / Karty --------------------------------------------
+  - name: Aktualizacja 3-D Secure 2.3
+    team: cards
+    size: M
+    start: 2026-10
+  - name: Click to Pay
+    team: cards
+    size: L
+    start: 2026-11
+  - id: tokenization
+    name: Tokenizacja sieciowa
+    team: cards
+    size: XL
+    start: 2027-01
+    color: violet           # pinned colour; all others are assigned automatically
+  - name: Portfele cyfrowe (Apple Pay, Google Pay)
+    team: cards
+    size: M
+    start: 2027-02
+  - name: Płatności kartą inicjowane przez merchanta
+    team: cards
+    size: L
+    depends_on: [tokenization]   # no start: right after tokenization ends
+
+  # --- Acquiring / Integracje acquirerów ------------------------------------
+  - id: acq-a
+    name: Migracja acquirera A
+    team: acq
+    size: XL
+    start: 2026-10
+  - name: Rozliczenia w modelu PF
+    team: acq
+    size: L
+    start: 2026-10
+    description: Przepływy rozliczeń dla modelu payment facilitator
+  - id: acq-b
+    name: Integracja acquirera B
+    team: acq
+    size: L
+    start: 2026-11
+  - name: Routing wielu acquirerów
+    team: acq
+    size: XL
+    start: 2027-01
+    depends_on: [acq-a, acq-b]
+  - name: Automatyzacja chargebacków
+    team: acq
+    size: M
+    start: 2027-01
+  - name: Silnik opłat i cenników
+    team: acq
+    size: L
+    start: 2027-01
+  - name: Acquirer C (transgraniczny)
+    team: acq
+    size: XL
+    start: 2027-02
+
+  # --- Doświadczenie merchanta / Panel merchanta ---------------------------
+  - name: Kreator onboardingu merchanta
+    team: panel
+    size: L
+    start: 2026-10
+  - name: Raporty i eksporty v2
+    team: panel
+    size: M
+    start: 2026-11
+  - name: Samoobsługowe zwroty
+    team: panel
+    size: S
+    start: 2027-01
+  - name: Pulpit wypłat
+    team: panel
+    size: M
+    start: 2027-02
+
+  # --- Doświadczenie merchanta / Aplikacja mobilna -------------------------
+  - name: Aplikacja 3.0 – nowy wygląd
+    team: app
+    size: XL
+    start: 2026-10
+  - name: Powiadomienia push
+    team: app
+    size: S
+    start: 2026-10
+  - name: Logowanie biometryczne
+    team: app
+    size: M
+    start: 2026-11
+  - name: BLIK w aplikacji
+    team: app
+    size: L
+    start: 2026-12
+    depends_on: [blik-recurring]    # cross-team dependency; delays this project by 26 days
+  - name: Widżety Android
+    team: app
+    size: S
+    start: 2026-12
+  - name: Utrzymanie aplikacji
+    team: app
+    ongoing: true             # never ends; holds one slot from its start on
+    start: 2027-02
+  - name: Program lojalnościowy
+    team: app
+    size: L
+    start: 2027-03
+
+  # --- Platforma i utrzymanie / Utrzymanie i wsparcie ----------------------
+  - name: Utrzymanie platformy
+    team: ops
+    ongoing: true
+    start: 2026-10
+    description: Aktualizacje, łatki i wsparcie L3
+  - name: Modernizacja narzędzi incydentowych
+    team: ops
+    size: M
+    start: 2026-11
+  - id: monitoring
+    name: Nowy monitoring i alerty
+    team: ops
+    size: L
+    start: 2027-01
+  - name: Baza wiedzy wsparcia
+    team: ops
+    size: S                   # no start: first free slot
+  - name: Optymalizacja kosztów chmury
+    team: ops
+    size: M
+    depends_on: monitoring    # a single dependency may be written without [ ]
+
+  # --- Platforma i utrzymanie / Cyberbezpieczeństwo ------------------------
+  - name: Zgodność z PCI DSS 4.0
+    team: sec
+    size: XL
+    start: 2026-10
+  - name: Gotowość na DORA
+    team: sec
+    size: L
+    start: 2027-01
+  - name: Cykl testów penetracyjnych
+    team: sec
+    size: S
+    start: 2027-04
+  - name: Operacje bezpieczeństwa
+    team: sec
+    ongoing: true
+    start: 2027-06

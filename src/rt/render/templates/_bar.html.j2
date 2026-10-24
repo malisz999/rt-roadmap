@@ -1,0 +1,7 @@
+{% macro bar(b) %}
+<div class="{{ b.classes }}" style="left: {{ b.left }}px; width: {{ b.width }}px; --fill: {{ b.fill }}; --accent: {{ b.accent }}; --ink: {{ b.ink }}" tabindex="0" role="img"{{ L }} title="{{ b.title }}" aria-label="{{ b.aria }}"{% for k, v in b.data %} {{ k }}="{{ v }}"{% endfor %}>
+{% if b.show_name %}<span class="rt-bar__label">{{ b.name }}</span>{% endif %}{% if b.delay %}<span class="rt-bar__pill">{{ b.delay }}</span>{% endif %}{% if b.chip %}<span class="rt-bar__chip">{{ b.chip }}</span>{% endif %}<span class="rt-tip" role="tooltip" aria-hidden="true">{{ b.title }}</span></div>
+{% if b.lead %}
+<div class="rt-lead{% if b.lead.cut %} rt-lead--cut{% endif %}" style="left: {{ b.lead.left }}px; width: {{ b.lead.width }}px; --accent: {{ b.accent }}"></div>
+{% endif %}
+{% endmacro %}

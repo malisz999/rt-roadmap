@@ -1,0 +1,4 @@
+# expect: E001
+version: 1
+roadmap:
+  title: Bad: value: here

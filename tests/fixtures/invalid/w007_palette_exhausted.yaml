@@ -1,0 +1,55 @@
+# expect: W007 at 50:5, W007 at 53:5
+version: 1
+roadmap:
+  title: Catalogue
+  horizon: { start: 2027-01, end: 2027-06 }
+  today: 2027-01-15
+sizes:
+  XS: 1
+scheduling:
+  adjacency_gap_days: 90
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - id: blik
+        name: BLIK
+        parallel_projects: 2
+        capacity: { developers: 2 }
+projects:
+  - name: Tiny 01
+    team: blik
+    size: XS
+  - name: Tiny 02
+    team: blik
+    size: XS
+  - name: Tiny 03
+    team: blik
+    size: XS
+  - name: Tiny 04
+    team: blik
+    size: XS
+  - name: Tiny 05
+    team: blik
+    size: XS
+  - name: Tiny 06
+    team: blik
+    size: XS
+  - name: Tiny 07
+    team: blik
+    size: XS
+  - name: Tiny 08
+    team: blik
+    size: XS
+  - name: Tiny 09
+    team: blik
+    size: XS
+  - name: Tiny 10
+    team: blik
+    size: XS
+  - name: Tiny 11
+    team: blik
+    size: XS
+  - name: Tiny 12
+    team: blik
+    size: XS

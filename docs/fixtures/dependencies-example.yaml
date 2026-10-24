@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=./roadmap.schema.json
+# Test fixture "DE" — dependencies and optional start (spec section 4.5).
+# Expected plan: dependencies-example.expected.json
+# Do not reorder projects: file order is part of the test.
+version: 1
+
+roadmap:
+  title: Dependencies worked example
+  horizon:
+    start: 2027-01           # also the anchor for projects without a start (SC-12)
+  today: 2027-01-15
+
+sizes:
+  S: 2
+  M: 4
+  L: 8
+
+subdomains:
+  - id: product
+    name: Product
+    teams:
+      - id: api
+        name: API
+        parallel_projects: 1
+      - id: web
+        name: Web
+        parallel_projects: 2
+  - id: platform
+    name: Platform
+    teams:
+      - id: ops
+        name: Operations
+        parallel_projects: 2
+
+projects:
+  - id: api-v2
+    name: API v2
+    team: api
+    size: L
+    start: 2027-01
+  - name: Web checkout
+    team: web
+    size: M
+    start: 2027-01
+    depends_on: [api-v2]               # by id
+  - name: Design system
+    team: web
+    size: M                            # no start: as soon as a slot is free
+  - name: Mobile release
+    team: web
+    size: S
+    depends_on: [Web checkout]         # by name; no start
+  - name: Ops maintenance
+    team: ops
+    ongoing: true                      # no start: from the anchor month
+  - name: Load testing
+    team: ops
+    size: S
+    start: 2027-02
+    depends_on: [api-v2, Web checkout] # cross-subdomain
+  - name: Partner onboarding
+    team: web
+    size: S
+    start: 2027-03
+    depends_on: [api-v2]               # dependency already met; waits for a slot
+  - name: Release audit
+    team: ops
+    size: S
+    start: 2027-02
+    depends_on: [Web checkout]         # waits for dependency, then for a slot

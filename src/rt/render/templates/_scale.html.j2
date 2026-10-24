@@ -1,0 +1,26 @@
+<div class="rt-timeline-head">
+<div class="rt-corner"><span>Team</span><span>Slot</span></div>
+<div class="rt-scale">
+{% if page.today %}
+<div class="rt-scale__row rt-scale__row--today"><span class="rt-today-label rt-today-label--{{ page.today.align }}" style="left: {{ page.today.left }}px">{{ page.today.label }}</span></div>
+{% endif %}
+<div class="rt-scale__row rt-scale__row--years">
+{% for s in page.years %}
+<span class="rt-year{% if s.edge %} rt-edge--{{ s.edge }}{% endif %}" style="left: {{ s.left }}px; width: {{ s.width }}px">{{ s.label }}</span>
+{% endfor %}
+</div>
+<div class="rt-scale__row rt-scale__row--quarters">
+{% for s in page.quarters %}
+<span class="rt-quarter{% if s.edge %} rt-edge--{{ s.edge }}{% endif %}" data-quarter="{{ s.key }}" style="left: {{ s.left }}px; width: {{ s.width }}px">{{ s.label }}</span>
+{% endfor %}
+</div>
+<div class="rt-scale__row rt-scale__row--months">
+{% for s in page.months %}
+<span class="rt-month{% if s.edge %} rt-edge--{{ s.edge }}{% endif %}" style="left: {{ s.left }}px; width: {{ s.width }}px">{{ s.label }}</span>
+{% endfor %}
+</div>
+{% if page.today %}
+<span class="rt-today-label__tick" style="left: {{ page.today.left }}px"></span>
+{% endif %}
+</div>
+</div>

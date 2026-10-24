@@ -1,0 +1,59 @@
+{% from "_bar.html.j2" import bar with context %}
+<section class="rt-subdomain" data-subdomain="{{ s.id }}" aria-labelledby="rt-sd-{{ s.id }}">
+<header class="rt-subdomain__head">
+<div class="rt-subdomain__intro">
+<h2 class="rt-subdomain__title" id="rt-sd-{{ s.id }}"{{ L }}>{{ s.name }}</h2>
+<span class="rt-subdomain__counts">{{ s.counts }}</span>
+{% if s.description %}
+<p class="rt-subdomain__desc"{{ L }}>{{ s.description }}</p>
+{% endif %}
+</div>
+</header>
+{% if s.teams %}
+<div class="rt-subdomain__body">
+<div class="rt-marks" aria-hidden="true">
+{% for m in page.marks %}
+<div class="{{ m.classes }}" data-date="{{ m.date }}" style="left: {{ m.left }}px"></div>
+{% endfor %}
+{% if page.today %}
+<div class="rt-today" data-date="{{ page.today.date }}" style="left: {{ page.today.left }}px"></div>
+{% endif %}
+</div>
+{% if s.deps %}
+<svg class="rt-deps" width="{{ page.timeline_width }}" height="{{ s.height }}" viewBox="0 0 {{ page.timeline_width }} {{ s.height }}" aria-hidden="true" focusable="false">
+<defs><marker id="{{ s.marker_id }}" viewBox="0 0 6 6" refX="6" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path class="rt-deps__head" d="M0 0L6 3L0 6Z"/></marker></defs>
+{% for d in s.deps %}
+<path class="rt-dep" data-from="{{ d.from_seq }}" data-to="{{ d.to_seq }}" d="{{ d.d }}" marker-end="url(#{{ s.marker_id }})"/>
+{% endfor %}
+</svg>
+{% endif %}
+{% for t in s.teams %}
+<div class="rt-team{% if t.compact %} rt-team--compact{% endif %}" data-team="{{ t.id }}" data-slots="{{ t.slots }}" data-utilization="{{ t.utilization }}">
+<div class="rt-team__label">
+<div class="rt-team__info">
+<div class="rt-team__top"><h3 class="rt-team__name"{{ L }} title="{{ t.name }}">{{ t.name }}</h3><span class="rt-team__util" title="{{ t.util_title }}"><span class="rt-meter"><span class="rt-meter__fill" style="width: {{ t.util_width }}%"></span></span>{{ t.util_text }}</span></div>
+<div class="rt-team__roles">{% for b in t.badges %}<span class="rt-badge{% if b.zero %} rt-badge--zero{% endif %}" title="{{ b.title }}"><strong>{{ b.role }}</strong> {{ b.count }}</span>{% endfor %}</div>
+<div class="rt-team__meta">{{ t.people }} · {{ t.slots_label }}</div>
+</div>
+<div class="rt-team__slots">
+{% for lane in t.lanes %}
+{% if lane.overflow %}<span class="rt-team__slot rt-team__slot--over"><small>Over capacity</small>{{ lane.label }}</span>{% else %}<span class="rt-team__slot">{{ lane.label }}</span>{% endif %}
+{% endfor %}
+</div>
+</div>
+<div class="rt-team__lanes">
+{% for lane in t.lanes %}
+<div class="rt-lane{% if lane.even %} rt-lane--even{% endif %}{% if lane.overflow %} rt-lane--overflow{% endif %}" data-team="{{ lane.team }}" data-lane="{{ lane.number }}" data-overflow="{{ 'true' if lane.overflow else 'false' }}">
+{% for b in lane.bars %}
+{{ bar(b) }}
+{% endfor %}
+</div>
+{% endfor %}
+</div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<p class="rt-subdomain__empty">No teams defined</p>
+{% endif %}
+</section>

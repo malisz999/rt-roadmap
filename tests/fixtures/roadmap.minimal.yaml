@@ -1,0 +1,28 @@
+# Smallest valid rt file. Render with: rt render roadmap.minimal.yaml
+version: 1
+
+roadmap:
+  title: My Roadmap
+
+sizes:
+  S: 2
+  M: 4
+  L: 8
+
+subdomains:
+  - id: product
+    name: Product
+    teams:
+      - id: core
+        name: Core Team
+        parallel_projects: 2
+
+projects:
+  - name: First project
+    team: core
+    size: M
+    start: 2027-01
+  - name: Maintenance
+    team: core
+    ongoing: true
+    start: 2027-01

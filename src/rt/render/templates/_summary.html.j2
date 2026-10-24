@@ -1,0 +1,27 @@
+<section class="rt-summary" aria-labelledby="rt-summary-title">
+<div class="rt-summary__head">
+<h2 class="rt-summary__title" id="rt-summary-title">Summary</h2>
+<ul class="rt-kpis">
+{% for k in page.summary.kpis %}
+<li class="rt-kpi"><strong class="rt-kpi__value">{{ k.value }}</strong>{{ k.label }}{% if k.note %}<small class="rt-kpi__note">{{ k.note }}</small>{% endif %}</li>
+{% endfor %}
+</ul>
+</div>
+<table class="rt-load">
+<colgroup><col>{% for m in page.summary.months %}<col>{% endfor %}</colgroup>
+<thead>
+<tr><th scope="col">Monthly load</th>{% for m in page.summary.months %}<th scope="col">{{ m.label }}{% if m.year %} <small>{{ m.year }}</small>{% endif %}</th>{% endfor %}</tr>
+</thead>
+<tbody>
+{% for r in page.summary.rows %}
+<tr class="rt-load__row rt-load__row--{{ r.kind }}">
+<th scope="row"{% if r.user_text %}{{ L }}{% endif %}>{{ r.name }}</th>
+{% for c in r.cells %}
+<td class="rt-load-cell rt-bin-{{ c.bin }}" data-row="{{ c.row }}" data-kind="{{ c.kind }}" data-month="{{ c.month }}" data-load="{{ c.load }}" title="{{ c.title }}"{% if r.user_text %}{{ L }}{% endif %}>{{ c.text }}</td>
+{% endfor %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<p class="rt-summary__key">Share of slot-days in use per month: <span class="rt-key rt-bin-0">–</span> 0 % <span class="rt-key rt-bin-1"></span> 1–49 % <span class="rt-key rt-bin-2"></span> 50–79 % <span class="rt-key rt-bin-3"></span> 80–100 % <span class="rt-key rt-bin-4"></span> over 100 %</p>
+</section>

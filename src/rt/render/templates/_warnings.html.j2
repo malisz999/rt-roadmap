@@ -1,0 +1,8 @@
+<details class="rt-warnings">
+<summary class="rt-warnings__summary">{{ page.warnings_label }}</summary>
+<ul class="rt-warnings__list">
+{% for w in page.warnings %}
+<li class="rt-warning" data-code="{{ w.code }}"><code class="rt-warning__code">{{ w.code }}</code><span class="rt-warning__msg">{{ w.message }}</span>{% if w.location %}<small class="rt-warning__loc">{{ w.location }}</small>{% endif %}</li>
+{% endfor %}
+</ul>
+</details>

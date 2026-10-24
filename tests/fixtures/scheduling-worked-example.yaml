@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=./roadmap.schema.json
+# Test fixture "WE" — scheduling worked example (spec section 4.4).
+# Expected plan: scheduling-worked-example.expected.json
+# Do not reorder projects: file order is part of the test.
+version: 1
+
+roadmap:
+  title: Scheduling worked example
+  today: 2027-02-15        # horizon is left automatic on purpose (SC-9)
+
+sizes:
+  S: 2
+  M: 4
+  L: 8
+
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - id: alpha
+        name: Alpha
+        parallel_projects: 2
+        capacity: { developers: 4, product_managers: 1, analysts: 1, testers: 1 }
+      - id: beta
+        name: Beta
+        parallel_projects: 1
+        capacity: { developers: 2, testers: 1 }
+
+projects:
+  - name: Core API
+    team: alpha
+    size: L
+    start: 2027-01
+  - name: Onboarding
+    team: alpha
+    size: M
+    start: 2027-01
+  - name: Reporting
+    team: alpha
+    size: M
+    start: 2027-01
+  - name: Hotfix pack
+    team: alpha
+    size: S
+    start: 2027-02
+  - name: Maintenance
+    team: alpha
+    ongoing: true
+    start: 2027-03
+  - name: Fraud rules
+    team: alpha
+    size: M
+    start: 2027-03
+  - name: Q2 launch
+    team: beta
+    size: M
+    start: 2027-04
+  - name: Quick win
+    team: beta
+    size: S
+    start: 2027-02
+  - name: Big bang
+    team: beta
+    size: L
+    start: 2027-03
