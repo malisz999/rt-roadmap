@@ -104,7 +104,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default=str(ROOT / "work" / "out" / "screenshots"))
     args = parser.parse_args()
-    out = Path(args.out)
+    out = Path(args.out).resolve()  # page URIs need an absolute path
     out.mkdir(parents=True, exist_ok=True)
     files = render(out)
     problems: list[str] = []
