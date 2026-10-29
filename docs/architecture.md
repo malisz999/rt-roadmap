@@ -2,6 +2,8 @@
 
 Oct 23, 2026 · @Artur
 
+Revised Oct 29, 2026: CR-1 products (sections 4.2, 5, 6.1, 6.5, 7.1, 10).
+
 **rt is built as a Python 3.12 command-line package with two runtime dependencies (ruamel.yaml, Jinja2), organised as a pipeline of pure functions around one immutable `Plan` object.** This document supplements the requirements specification ("RS"); where the two differ, the RS wins unless section 13 here lists an agreed clarification. Section numbers prefixed "RS" point into the requirements.
 
 ## 1. Decisions at a glance
@@ -140,16 +142,17 @@ rt/
 | Module | Function | Signature (abridged) | Rules |
 | --- | --- | --- | --- |
 | `io.loader` | `load_text` | `(text: str, source: str) -> tuple[RawDoc \| None, list[Diagnostic]]` | E001, E003; strips UTF-8 BOM; NFC on every scalar string |
-| `model.build` | `build_model` | `(raw: RawDoc, diags: Collector) -> Model \| None` | E002, E004, E010–E013, E042, E043; returns `None` if any error |
-| `model.references` | `check_references` | `(model: Model, diags: Collector) -> ResolvedModel \| None` | E020–E023, E030–E037; resolves `depends_on` to `seq` |
+| `model.build` | `build_model` | `(raw: RawDoc, diags: Collector) -> Model \| None` | E002, E004, E010–E013, E042, E043; parses `products`; returns `None` if any error |
+| `model.references` | `check_references` | `(model: Model, diags: Collector) -> ResolvedModel \| None` | E020–E025, E030–E039; resolves `depends_on` to `seq` |
 | `schedule.horizon` | `anchor` | `(cfg: Settings) -> date` | RS SC-12; needs only explicit horizon start or `today` |
 | `schedule.scheduler` | `schedule` | `(m: ResolvedModel, mode: Mode, anchor: date, diags) -> Schedule \| None` | RS SC-5 to SC-8, SC-13; E060, E061 |
 | `schedule.horizon` | `resolve_horizon` | `(m, s: Schedule, cfg) -> Horizon` | RS SC-9; W012 |
 | `schedule.horizon` | `visibility` | `(s, h: Horizon) -> dict[int, Visibility]` | RS SC-10; flags; W002–W004 |
 | `color.adjacency` | `neighbours` | `(m, s, vis, gap_days) -> dict[int, frozenset[int]]` | RS CO-1 to CO-3 |
-| `color.dsatur` | `assign_colors` | `(m, vis, nb) -> dict[int, ColorRef]` | RS CO-4 to CO-6; W007, W009 |
+| `color.dsatur` | `product_keys` | `(m, diags) -> dict[str, ColorKey]` | RS CO-4 step 2: product pins, then automatic `10…31, 0…9`; W014 |
+| `color.dsatur` | `assign_colors` | `(m, vis, nb, diags, products) -> dict[int, ColorRef]` | RS CO-4 to CO-7: project pins and product bars pre-coloured, DSATUR over `0…9`; W007, W009 |
 | `schedule.load` | `utilisation`, `monthly_load` | `(m, s, h) -> …` | RS OUT-13, OUT-32 |
-| `plan.build` | `build_plan` | `(m, s, h, vis, colors, load, diags) -> Plan` | Assembles; adds W001, W005, W006, W008, W010, W011 |
+| `plan.build` | `build_plan` | `(m, s, h, vis, colors, load, diags, product_colors) -> Plan` | Assembles; adds W001, W005, W006, W008, W010, W011, W013 |
 | `plan.serialize` | `to_json` | `(plan: Plan) -> str` | RS PL-1 to PL-6 |
 | `layout.viewmodel` | `build_page` | `(plan: Plan, opts: RenderOptions) -> PageVM` | All formatting and pixel maths |
 | `render.renderer` | `render_html` | `(page: PageVM) -> str` | No logic beyond loops and conditionals |
@@ -173,8 +176,9 @@ Every type is a `@dataclass(frozen=True, slots=True)` or `NamedTuple`; collectio
 | `Capacity` | `developers`, `product_managers`, `analysts`, `testers` | Defaults 0; `.total` property |
 | `Team` | `id`, `name`, `subdomain_id`, `slots`, `capacity`, `pos` | `slots` = `parallel_projects` |
 | `Subdomain` | `id`, `name`, `description`, `team_ids: tuple[str, ...]`, `pos` |  |
-| `Project` | `seq`, `id`, `name`, `team_id`, `start: Month \| None`, `size: str \| None`, `ongoing`, `depends_on_refs: tuple[str, ...]`, `description`, `color: ColorSpec \| None`, `pos` | `pos` = first key of the mapping (RS 9 location rule) |
-| `Model` | `settings`, `sizes`, `subdomains`, `teams`, `projects` | Structure valid, references not yet checked |
+| `Product` | `id`, `name`, `domain_id`, `owner`, `description`, `color: ColorSpec \| None`, `pos` | `domain_id` = the owning subdomain (RS 3.2) |
+| `Project` | `seq`, `id`, `name`, `team_id`, `start: Month \| None`, `size: str \| None`, `ongoing`, `depends_on_refs: tuple[str, ...]`, `description`, `color: ColorSpec \| None`, `pos`, `product_id: str \| None` | `pos` = first key of the mapping (RS 9 location rule); `product_id` `None` = standalone |
+| `Model` | `settings`, `sizes`, `subdomains`, `teams`, `projects`, `products` | Structure valid, references not yet checked; `products` in file order (legend order) |
 | `ResolvedModel` | `Model` + `deps: Mapping[int, tuple[int, ...]]`, `weeks: Mapping[int, int \| None]` | Output of `check_references`; the only input the scheduler accepts |
 
 ### 5.2 Computed types
@@ -188,6 +192,7 @@ Every type is a `@dataclass(frozen=True, slots=True)` or `NamedTuple`; collectio
 | `Visibility` | `start: date \| None`, `end: date \| None`, `flags: frozenset[str]` | `None` when hidden |
 | `ColorRef` | `index: int \| None`, `name: str \| None`, `fill`, `accent`, `text` | `index` `None` for custom hex |
 | `Plan` | Mirrors RS 8 field for field, plus `palette` and the resolved `Model` reference | `plan.serialize` writes fields in dataclass order, so the order in the type IS the JSON key order |
+| `PlannedProject.product`, `ProductPlan` | `product` after `team`; `ProductPlan(id, name, domain, owner, color_index, color_name, color_fill, projects)` plus its `ColorRef` (not serialised) in `Plan.products`, right after `teams` | RS PL-7 |
 
 ### 5.3 View model (`layout.viewmodel`)
 
@@ -195,11 +200,12 @@ The view model holds only display-ready values: strings already formatted, pixel
 
 | Type | Holds |
 | --- | --- |
-| `PageVM` | title, subtitle, lang, horizon label, as-of label, legend items, timeline width, year / quarter / month columns, today mark, optional `SummaryVM`, sections, warnings, version |
+| `PageVM` | title, subtitle, lang, horizon label, as-of label, legend items (sizes and product chips), timeline width, year / quarter / month columns, today mark, optional `SummaryVM`, sections, warnings, version |
 | `SectionVM` | subdomain id, name, description, counts, height, teams, connector paths (`d` strings) |
 | `TeamVM` | name, role badges, people total, slot label, utilisation percent and bar width, lanes |
 | `LaneVM` | number label (`1`, `+1`), overflow flag, bars |
-| `BarVM` | `left`, `width`, fill / accent / text colours, label, size chip, glyph flags, delay pill, lead-line box, `title` text, `aria-label`, `data` attributes |
+| `BarVM` | `left`, `width`, fill / accent / text colours, label, size chip, glyph flags, delay pill, lead-line box, `title` text (with the `Product: … · owned by …` line), `aria-label`, `data` attributes (incl. `data-product`) |
+| `LegendProductVM` | product id, name, ` · domain · owner` text, colour index, fill / accent / text colours, chip tooltip |
 | `SummaryVM` | KPI tiles, month headers, rows (kind, name, indent, cells with value text, bin class, tooltip, `data` attributes) |
 
 ## 6. Algorithms
@@ -214,7 +220,7 @@ The anchor depends only on settings, while the automatic horizon depends on the 
 2. `schedule(model, mode, anchor)` — placements for every project.
 3. `resolve_horizon(model, schedule, settings)` — automatic parts of the horizon.
 4. `visibility(schedule, horizon)` — visible intervals and flags.
-5. `neighbours(...)` then `assign_colors(...)`.
+5. `neighbours(...)`, then `product_keys(...)` (product colours, W014), then `assign_colors(...)`.
 6. `utilisation(...)` and `monthly_load(...)`.
 7. `build_plan(...)` — assemble and emit the remaining warnings.
 
@@ -256,9 +262,11 @@ Lane index is computed per subdomain section in render order (teams in file orde
 
 ### 6.5 Colouring (DSATUR)
 
-- Keep `sat[seq]` = set of colour keys among coloured neighbours and `use[colour]` = global count. Colour keys are palette indices `0…9`, or the upper-cased hex for custom colours (custom colours do not count toward palette use).
-- Pre-colour pinned projects first (RS CO-4); two adjacent pinned bars with the same key → W009.
-- Loop: pick `min(uncoloured, key=(-len(sat), -degree, seq))`; choose `min(allowed, key=(use, index))`; if none allowed, `min(range(10), key=(conflicts, use, index))` and W007.
+- `color.palette` holds 32 entries; `BASE = range(10)` is what DSATUR may choose for standalone bars, `PRODUCT_ORDER = 10…31, 0…9` is the scan order for automatic product colours.
+- Product colours first (`product_keys`, RS CO-4 step 2): every product pinned with a palette name takes its entry (`taken[i] += 1`); then each unpinned product in file order takes the first `PRODUCT_ORDER` entry with `taken == 0`, else `min(range(32), key=(taken, index))` and W014 at the product, naming the first product that holds the entry. Products without visible bars still get a colour (the legend shows them).
+- Keep `sat[seq]` = set of colour keys among coloured neighbours and `use[colour]` = global count. Colour keys are palette indices `0…31`, or the upper-cased hex for custom colours (custom colours do not count toward palette use).
+- Pre-colour, in file order, every visible bar with a project pin and every other bar of a product (its product's key); pre-coloured bars count in `use` (RS CO-4 steps 1–2). Two adjacent pre-coloured bars with the same key → W009 at the later one, unless both have the same `product_id`; the message says "pinned to" when both are project pins, else "coloured".
+- Loop (standalone bars): pick `min(uncoloured, key=(-len(sat), -degree, seq))`; choose `min(allowed ∩ BASE, key=(use, index))`; if none allowed, `min(BASE, key=(conflicts, use, index))` and W007.
 - Hidden bars get no colour (`null` in the plan).
 
 ### 6.6 Utilisation and monthly load
@@ -299,7 +307,7 @@ The page is static HTML positioned in pixels: every bar, line and mark gets an a
 ```html
 <body class="rt">
   <header class="rt-head">…title, subtitle, horizon, as-of…</header>
-  <section class="rt-legend">…</section>
+  <section class="rt-legend">…sizes · symbols · products (rt-product chips)…</section>
   <section class="rt-summary">…</section>                  <!-- only with --summary -->
   <div class="rt-timeline-head">                              <!-- sticky top -->
     <div class="rt-corner"></div>                             <!-- sticky left, 280 px -->
@@ -490,7 +498,8 @@ Generated models: 1–5 teams with 1–4 slots, 0–40 projects, sizes 1–26 we
 - `delay` mode creates no overflow lanes; auto-start projects never sit in overflow lanes in any mode.
 - In `overflow` mode, projects with a requested start begin exactly at `earliest`.
 - Re-running on the same input yields an identical plan (determinism).
-- Colouring: when W007 is absent, no two neighbours share a colour; when no bar has 10 or more neighbours and nothing is pinned, W007 never appears (greedy uses at most degree + 1 colours).
+- Colouring: when W007 and W009 are absent, no two neighbours share a colour unless both belong to the same product; when no bar has 10 or more neighbours and nothing is pinned, W007 never appears (greedy uses at most degree + 1 colours).
+- Products (0–4 or 30–36 per model, some pinned): unpinned bars of a product carry its colour; unpinned standalone bars use entries 0–9; without pins the automatic product colours are `10…31, 0…9` in file order, with one W014 per product beyond 32.
 
 ### 10.3 Invalid-input fixtures
 
@@ -504,7 +513,7 @@ The harness runs `rt validate` and asserts the exact set of codes and positions,
 
 ### 10.4 Traceability
 
-Each RS acceptance test becomes one test function named after it (`test_at_03_bar_geometry`), so a failing CI run names the requirement directly. `tests/TRACEABILITY.md` is generated from the test names and lists AT → test file; CI fails if any of AT-01 … AT-55 has no test.
+Each RS acceptance test becomes one test function named after it (`test_at_03_bar_geometry`), so a failing CI run names the requirement directly. `tests/TRACEABILITY.md` is generated from the test names and lists AT → test file; CI fails if any of AT-01 … AT-65 has no test.
 
 ## 11. Build, packaging and CI
 
@@ -556,7 +565,7 @@ The distribution name `rt-roadmap` avoids clashing with short names on PyPI (con
 | `lint` | ubuntu | `ruff check`, `ruff format --check`, `mypy` | Yes |
 | `test` | ubuntu, macOS 14 (arm64), Windows × Python 3.12, 3.13 | `pytest -m "not slow" --cov`, coverage ≥ 90 % on core packages | Yes |
 | `perf` | ubuntu | `pytest -m slow` (RS NF-3) | Yes |
-| `traceability` | ubuntu | Every AT-01…AT-55 has a test | Yes |
+| `traceability` | ubuntu | Every AT-01…AT-65 has a test | Yes |
 | `release` (tag `v*`) | ubuntu, macOS (arm64, x86-64), Windows | Build wheel and sdist; PyInstaller `--onefile` binaries; smoke-test each binary with `rt render` on the three fixtures; screenshot job for human approval; publish | — |
 
 Core packages for the coverage gate: `model`, `schedule`, `color`, `plan`, `layout`, `diagnostics` (RS NF-8).
@@ -593,7 +602,7 @@ Designing the system surfaced eight points the requirements leave open; this doc
 | C5 | Connector route | Runs along the lane boundary next to the successor, as specified in 6.7 | OUT-28 |
 | C6 | Error mode | Conflicting projects are placed in virtual overflow lanes so later conflicts are judged as in overflow mode; all are reported in one run | SC-7 |
 | C7 | Ongoing bar inset | Ongoing bars also keep the 2 px right inset, ending at `x(h1) − 2` (matches AT-04 width 476.00) | OUT-8, OUT-19 |
-| C8 | Pinned colour clash | W009 only when two adjacent bars are both pinned to the same colour; an unpinned bar never takes a pinned neighbour's colour unless W007 applies | CO-4 |
+| C8 | Pinned colour clash | W009 only when two adjacent pre-coloured bars (project pins or product colours) share a colour and are not both of the same product; a standalone bar never takes a pre-coloured neighbour's colour unless W007 applies | CO-4 |
 | C9 | Closed pipe on Windows | Same exit code 141 as on POSIX, although Windows has no SIGPIPE | ST-6 |
 | C10 | Terminal detection | stdin.isatty(); tests use a pseudo-terminal on POSIX and FakeIO on Windows | CLI-2, AT-40 |
 | C11 | ruamel version | Pin moved to 0.19.x; the expected YAML files were generated with ruamel.yaml 0.19.1 | CV-18 |
@@ -605,6 +614,6 @@ Designing the system surfaced eight points the requirements leave open; this doc
 
 ### 13.3 Companion file
 
-`reference_plan.py` (saved in the repository under `docs/reference/`) is the oracle that produced both expected plan files. It implements scheduling in `delay` and `overflow` modes, horizon, visibility, colouring, utilisation and monthly load with half-up rounding. It performs no validation and does not implement `error` mode, so it is a test oracle only.
+`reference_plan.py` (saved in the repository under `docs/reference/`) is the oracle that produced the three expected plan files. It implements scheduling in `delay` and `overflow` modes, horizon, visibility, product colours and colouring (W009, W013, W014 included), utilisation and monthly load with half-up rounding. It performs no validation and does not implement `error` mode, so it is a test oracle only.
 
-`reference_convert.py` (same folder) produced both expected YAML files from the CSV fixtures. It implements decoding, delimiter detection, header mapping, value parsing, team resolution, skeleton generation, base merge and emission as in section 6.8, but not the validator or the E103–E107 checks, so it too is a test oracle only.
+`reference_convert.py` (same folder) produced both expected YAML files from the CSV fixtures. It implements decoding, delimiter detection, header mapping, value parsing, team and product resolution, skeleton generation, base merge and emission as in section 6.8, but not the validator or the E103–E107 checks, so it too is a test oracle only.

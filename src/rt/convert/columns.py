@@ -13,6 +13,7 @@ COLUMNS: tuple[str, ...] = (
     "name",
     "size",
     "team",
+    "product",
     "subdomain",
     "start",
     "ongoing",
@@ -85,6 +86,9 @@ def resolve_columns(
             continue
         if canon == "subdomain" and base_mode:
             diags.warning(Code.W020, pos, detail=f'column "{head}" is ignored with --base')
+            continue
+        if canon == "product" and not base_mode:  # the skeleton creates no products
+            diags.warning(Code.W020, pos, detail=f'column "{head}" is ignored without --base')
             continue
         if canon in fields:
             first_index, first_head = fields[canon]

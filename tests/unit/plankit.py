@@ -26,6 +26,7 @@ from rt.model.types import (
     ColorSpec,
     Mode,
     Model,
+    Product,
     Project,
     ResolvedModel,
     Settings,
@@ -39,6 +40,7 @@ from rt.plan.types import (
     Plan,
     PlannedProject,
     PlanWarning,
+    ProductPlan,
     SubdomainLoad,
     TeamLoad,
     TeamPlan,
@@ -63,6 +65,28 @@ PALETTE: tuple[tuple[str, str, str], ...] = (
     ("teal", "#99F6E4", "#14B8A6"),
     ("lime", "#D9F99D", "#65A30D"),
     ("sand", "#EADBC8", "#A16207"),
+    ("blue", "#BFDBFE", "#3B82F6"),
+    ("cyan", "#A5F3FC", "#06B6D4"),
+    ("emerald", "#A7F3D0", "#10B981"),
+    ("yellow", "#FEF08A", "#CA8A04"),
+    ("fuchsia", "#F5D0FE", "#D946EF"),
+    ("purple", "#E9D5FF", "#A855F7"),
+    ("stone", "#E7E5E4", "#78716C"),
+    ("sand-deep", "#D6C3A5", "#854D0E"),
+    ("indigo-deep", "#A5B4FC", "#4F46E5"),
+    ("green-deep", "#86EFAC", "#16A34A"),
+    ("orange-deep", "#FDBA74", "#EA580C"),
+    ("pink-deep", "#F9A8D4", "#DB2777"),
+    ("sky-deep", "#7DD3FC", "#0284C7"),
+    ("amber-deep", "#FCD34D", "#B45309"),
+    ("violet-deep", "#C4B5FD", "#7C3AED"),
+    ("teal-deep", "#5EEAD4", "#0D9488"),
+    ("lime-deep", "#BEF264", "#4D7C0F"),
+    ("blue-deep", "#93C5FD", "#2563EB"),
+    ("cyan-deep", "#67E8F9", "#0891B2"),
+    ("emerald-deep", "#6EE7B7", "#059669"),
+    ("fuchsia-deep", "#F0ABFC", "#C026D3"),
+    ("purple-deep", "#D8B4FE", "#9333EA"),
 )
 
 _reference: ModuleType | None = None
@@ -167,9 +191,22 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
                 description=str(p["description"]) if p.get("description") else None,
                 color=ColorSpec(str(color), None, str(color)) if color else None,
                 pos=_pos(seq),
+                product_id=str(p["product"]) if p.get("product") else None,
             )
         )
-    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects))
+    products = tuple(
+        Product(
+            id=str(q["id"]),
+            name=str(q["name"]),
+            domain_id=str(q["domain"]),
+            owner=str(q["owner"]) if q.get("owner") else None,
+            description=str(q["description"]) if q.get("description") else None,
+            color=ColorSpec(str(q["color"]), None, str(q["color"])) if q.get("color") else None,
+            pos=_pos(),
+        )
+        for q in doc.get("products") or []
+    )
+    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), products=products)
     deps = {pp["seq"]: tuple(pp["depends_on"]) for pp in out["projects"]}
     weeks = {pp["seq"]: pp["weeks"] for pp in out["projects"]}
     resolved = ResolvedModel(model, MappingProxyType(deps), MappingProxyType(weeks))
@@ -185,6 +222,7 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
         horizon=HorizonOut(start, end, h0, h1, hz["days"]),
         on_conflict=Mode(out["on_conflict"]),
         teams=team_plans,
+        products=tuple(_product_plan(pp) for pp in out["products"]),
         projects=planned,
         monthly_load=_load(out["monthly_load"], planned, teams, subdomains),
         warnings=tuple(PlanWarning(w["code"], w["line"], w["column"], w["message"]) for w in out["warnings"]),
@@ -192,12 +230,32 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
     )
 
 
+def _color(ci: int | None) -> ColorRef | None:
+    if ci is None:
+        return None
+    name, fill, accent = PALETTE[ci]
+    return ColorRef(ci, name, fill, accent, "#1E293B")
+
+
+def _product_plan(pp: dict[str, Any]) -> ProductPlan:
+    color = _color(pp["color_index"])
+    assert color is not None
+    return ProductPlan(
+        id=pp["id"],
+        name=pp["name"],
+        domain=pp["domain"],
+        owner=pp["owner"],
+        color_index=pp["color_index"],
+        color_name=pp["color_name"],
+        color_fill=pp["color_fill"],
+        projects=tuple(pp["projects"]),
+        color=color,
+    )
+
+
 def _project(pp: dict[str, Any]) -> PlannedProject:
     ci = pp["color_index"]
-    color = None
-    if ci is not None:
-        name, fill, accent = PALETTE[ci]
-        color = ColorRef(ci, name, fill, accent, "#1E293B")
+    color = _color(ci)
     vis = pp["visible"]
     start = _d(pp["start"])
     earliest = _d(pp["earliest_start"])
@@ -207,6 +265,7 @@ def _project(pp: dict[str, Any]) -> PlannedProject:
         id=pp["id"],
         name=pp["name"],
         team=pp["team"],
+        product=pp["product"],
         size=pp["size"],
         weeks=pp["weeks"],
         ongoing=pp["ongoing"],

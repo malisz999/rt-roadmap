@@ -1,9 +1,9 @@
 """Screenshot review for RS AT-25 / NF-6 (ADS 10.1 "Visual" layer, release pipeline).
 
-Renders EX, WE and DE (EX also with --summary and in overflow mode) and captures them in Chromium, Firefox and
-WebKit, light and dark, plus an A3-landscape print PDF from Chromium. A human reviews the images; the script also
-checks the things a machine can: sticky header and label column stay put after scrolling, no element overflows the
-bar text, and the print stylesheet produces a PDF.
+Renders EX, WE, DE and the products example (EX also with --summary and in overflow mode) and captures them in
+Chromium, Firefox and WebKit, light and dark, plus an A3-landscape print PDF from Chromium. A human reviews the
+images; the script also checks the things a machine can: sticky header and label column stay put after scrolling,
+no element overflows the bar text, and the print stylesheet produces a PDF.
 
 Usage:
   uv run --with playwright python -m playwright install chromium firefox webkit
@@ -27,6 +27,7 @@ PAGES: dict[str, list[str]] = {
     "we": [str(FIXTURES / "scheduling-worked-example.yaml"), "--summary"],
     "we-overflow": [str(FIXTURES / "scheduling-worked-example.yaml"), "--on-conflict", "overflow", "--summary"],
     "de": [str(FIXTURES / "dependencies-example.yaml")],
+    "products": [str(FIXTURES / "products-example.yaml")],
 }
 
 

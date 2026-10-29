@@ -37,6 +37,8 @@ class Code(Enum):
     E021 = ("E021", 'team id "{id}" already defined at line {line}')
     E022 = ("E022", 'project "{name}" already exists in team "{team}" (line {line})')
     E023 = ("E023", 'project id "{id}" already defined at line {line}')
+    E024 = ("E024", 'product id "{id}" already defined at line {line}')
+    E025 = ("E025", 'product name "{name}" already used at line {line}')
     # References
     E030 = ("E030", 'project "{project}" references unknown team "{team}"{hint}')
     E031 = ("E031", 'project "{project}" uses size "{size}", not defined in sizes ({sizes})')
@@ -46,6 +48,8 @@ class Code(Enum):
     E035 = ("E035", '"{ref}" matches {count} projects (lines {lines}); give one an id and use it')
     E036 = ("E036", 'project "{project}" cannot depend on ongoing project "{dep}"')
     E037 = ("E037", "{detail}")
+    E038 = ("E038", 'project "{project}" references unknown product "{product}"{hint}')
+    E039 = ("E039", 'product "{product}" references unknown domain "{domain}"{hint}')
     # Horizon and lists
     E040 = ("E040", "horizon end {end} is before start {start}")
     E041 = ("E041", "horizon spans {months} months; maximum is 120")
@@ -74,10 +78,12 @@ class Code(Enum):
     W006 = ("W006", 'subdomain "{subdomain}" has no teams')
     W007 = ("W007", 'project "{project}" shares colour "{color}" with an adjacent bar')
     W008 = ("W008", 'team "{team}" has no members in capacity')
-    W009 = ("W009", 'projects "{first}" and "{second}" are adjacent and both pinned to "{color}"')
+    W009 = ("W009", 'projects "{first}" and "{second}" are adjacent and both {how} "{color}"')
     W010 = ("W010", "no projects defined; rendering empty roadmap")
     W011 = ("W011", 'project "{project}" exceeds team "{team}" capacity; placed in overflow lane +{lane}')
     W012 = ("W012", "automatic horizon capped at 120 months ({start} to {end})")
+    W013 = ("W013", 'product "{product}" has no projects')
+    W014 = ("W014", 'products "{first}" and "{second}" share colour "{color}" (more than {size} products)')
     W020 = ("W020", "{detail}")
     W021 = ("W021", 'day of "{value}" ignored; using {month}')
 

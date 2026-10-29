@@ -24,6 +24,7 @@ __all__ = [
     "Month",
     "Overrides",
     "Pos",
+    "Product",
     "Project",
     "ResolvedModel",
     "Settings",
@@ -127,6 +128,21 @@ class ColorSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class Product:
+    """A named group of projects owned by one domain (a subdomain id); its bars share one colour."""
+
+    id: str
+    name: str
+    domain_id: str  # the owning subdomain; the product's projects may run in teams of any subdomain
+    owner: str | None
+    description: str | None
+    color: ColorSpec | None  # pins the product colour
+    pos: Pos  # first key of the product mapping
+    field_pos: Mapping[str, Pos] = EMPTY_POS
+    incomplete: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class DepRef:
     """One `depends_on` item as written (NFC-normalised), with its position."""
 
@@ -147,6 +163,7 @@ class Project:
     description: str | None
     color: ColorSpec | None
     pos: Pos  # first key of the project mapping (RS 9 location rule)
+    product_id: str | None = None  # None = standalone
     field_pos: Mapping[str, Pos] = EMPTY_POS  # value positions: "team", "size", "start", ...
     field_column: Mapping[str, str] = EMPTY_STR  # CSV header per field when the project came from rt convert
     incomplete: bool = False
@@ -166,6 +183,7 @@ class Model:
     teams: tuple[Team, ...]  # file order across all subdomains
     projects: tuple[Project, ...]  # file order; projects[i].seq == i + 1
     source: str = "<input>"
+    products: tuple[Product, ...] = ()  # file order = legend order
 
     def team(self, team_id: str) -> Team:
         for t in self.teams:
@@ -181,6 +199,12 @@ class Model:
 
     def project(self, seq: int) -> Project:
         return self.projects[seq - 1]
+
+    def product(self, product_id: str) -> Product:
+        for p in self.products:
+            if p.id == product_id:
+                return p
+        raise KeyError(product_id)
 
     def size_weeks(self, label: str) -> int:
         for s in self.sizes:
@@ -212,3 +236,7 @@ class ResolvedModel:
     @property
     def projects(self) -> tuple[Project, ...]:
         return self.model.projects
+
+    @property
+    def products(self) -> tuple[Product, ...]:
+        return self.model.products

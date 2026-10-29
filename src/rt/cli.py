@@ -35,6 +35,7 @@ CONVERT_COLUMNS: tuple[str, ...] = (
     "name",
     "size",
     "team",
+    "product",
     "subdomain",
     "start",
     "ongoing",

@@ -1,0 +1,86 @@
+# expect: W014 at 52:5
+version: 1
+roadmap:
+  title: Catalogue
+  horizon: { start: 2027-01 }
+  today: 2027-01-15
+sizes:
+  S: 2
+  M: 4
+  L: 8
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - id: blik
+        name: BLIK
+        parallel_projects: 1
+        capacity: { developers: 2 }
+products:
+  - { id: p01, name: P01, domain: core }
+  - { id: p02, name: P02, domain: core }
+  - { id: p03, name: P03, domain: core }
+  - { id: p04, name: P04, domain: core }
+  - { id: p05, name: P05, domain: core }
+  - { id: p06, name: P06, domain: core }
+  - { id: p07, name: P07, domain: core }
+  - { id: p08, name: P08, domain: core }
+  - { id: p09, name: P09, domain: core }
+  - { id: p10, name: P10, domain: core }
+  - { id: p11, name: P11, domain: core }
+  - { id: p12, name: P12, domain: core }
+  - { id: p13, name: P13, domain: core }
+  - { id: p14, name: P14, domain: core }
+  - { id: p15, name: P15, domain: core }
+  - { id: p16, name: P16, domain: core }
+  - { id: p17, name: P17, domain: core }
+  - { id: p18, name: P18, domain: core }
+  - { id: p19, name: P19, domain: core }
+  - { id: p20, name: P20, domain: core }
+  - { id: p21, name: P21, domain: core }
+  - { id: p22, name: P22, domain: core }
+  - { id: p23, name: P23, domain: core }
+  - { id: p24, name: P24, domain: core }
+  - { id: p25, name: P25, domain: core }
+  - { id: p26, name: P26, domain: core }
+  - { id: p27, name: P27, domain: core }
+  - { id: p28, name: P28, domain: core }
+  - { id: p29, name: P29, domain: core }
+  - { id: p30, name: P30, domain: core }
+  - { id: p31, name: P31, domain: core }
+  - { id: p32, name: P32, domain: core }
+  - { id: p33, name: P33, domain: core }
+projects:
+  - { name: X01, team: blik, product: p01, size: S }
+  - { name: X02, team: blik, product: p02, size: S }
+  - { name: X03, team: blik, product: p03, size: S }
+  - { name: X04, team: blik, product: p04, size: S }
+  - { name: X05, team: blik, product: p05, size: S }
+  - { name: X06, team: blik, product: p06, size: S }
+  - { name: X07, team: blik, product: p07, size: S }
+  - { name: X08, team: blik, product: p08, size: S }
+  - { name: X09, team: blik, product: p09, size: S }
+  - { name: X10, team: blik, product: p10, size: S }
+  - { name: X11, team: blik, product: p11, size: S }
+  - { name: X12, team: blik, product: p12, size: S }
+  - { name: X13, team: blik, product: p13, size: S }
+  - { name: X14, team: blik, product: p14, size: S }
+  - { name: X15, team: blik, product: p15, size: S }
+  - { name: X16, team: blik, product: p16, size: S }
+  - { name: X17, team: blik, product: p17, size: S }
+  - { name: X18, team: blik, product: p18, size: S }
+  - { name: X19, team: blik, product: p19, size: S }
+  - { name: X20, team: blik, product: p20, size: S }
+  - { name: X21, team: blik, product: p21, size: S }
+  - { name: X22, team: blik, product: p22, size: S }
+  - { name: X23, team: blik, product: p23, size: S }
+  - { name: X24, team: blik, product: p24, size: S }
+  - { name: X25, team: blik, product: p25, size: S }
+  - { name: X26, team: blik, product: p26, size: S }
+  - { name: X27, team: blik, product: p27, size: S }
+  - { name: X28, team: blik, product: p28, size: S }
+  - { name: X29, team: blik, product: p29, size: S }
+  - { name: X30, team: blik, product: p30, size: S }
+  - { name: X31, team: blik, product: p31, size: S }
+  - { name: X32, team: blik, product: p32, size: S }
+  - { name: X33, team: blik, product: p33, size: S }

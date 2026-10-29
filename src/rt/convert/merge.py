@@ -27,6 +27,12 @@ class BaseTeam:
     name: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class BaseProduct:
+    id: str
+    name: str | None
+
+
 @dataclass
 class _Row:
     record: CsvRecord
@@ -44,6 +50,7 @@ class _Context:
     size_labels: list[str]
     base: RawDoc | None = None
     base_teams: list[BaseTeam] = field(default_factory=list)
+    base_products: list[BaseProduct] = field(default_factory=list)
     skeleton: Skeleton | None = None
     suppress: set[tuple[int, Code]] = field(default_factory=set)  # (CSV line, code) already reported here
     registrations: list[tuple[CommentedMap, CsvRow]] = field(default_factory=list)  # generated nodes → CSV cells
@@ -71,8 +78,20 @@ def base_teams(root: Any) -> list[BaseTeam]:
     return found
 
 
-def resolve_team(value: str, teams: Sequence[BaseTeam]) -> str | None:
-    """Team id exactly, else team name exactly (strings are NFC on both sides) (RS CV-16)."""
+def base_products(root: Any) -> list[BaseProduct]:
+    """Products of a base document in file order, read defensively like base_teams()."""
+    items = root.get("products") if isinstance(root, dict) else None
+    found: list[BaseProduct] = []
+    for pr in items if isinstance(items, list) else []:
+        if isinstance(pr, dict) and isinstance(pr.get("id"), str):
+            name = pr.get("name")
+            found.append(BaseProduct(pr["id"], name if isinstance(name, str) else None))
+    return found
+
+
+def resolve_team(value: str, teams: Sequence[BaseTeam | BaseProduct]) -> str | None:
+    """Team id exactly, else team name exactly (strings are NFC on both sides) (RS CV-16). Products resolve the
+    same way (RS 3.4)."""
     for t in teams:
         if t.id == value:
             return t.id
@@ -82,8 +101,8 @@ def resolve_team(value: str, teams: Sequence[BaseTeam]) -> str | None:
     return None
 
 
-def team_hint(value: str, teams: Sequence[BaseTeam]) -> str:
-    """` (did you mean "app"?)`: closest team id or name, compared case-insensitively."""
+def team_hint(value: str, teams: Sequence[BaseTeam | BaseProduct]) -> str:
+    """` (did you mean "app"?)`: closest team (or product) id or name, compared case-insensitively."""
     originals: dict[str, str] = {}
     for t in teams:
         for cand in (t.id, t.name):
@@ -122,6 +141,24 @@ def _base_team(ctx: _Context, row: CsvRecord, team_raw: str, name: str) -> str |
     )
     ctx.suppress.add((row.line, Code.E010))
     return None
+
+
+def _base_product(ctx: _Context, row: CsvRecord, value: str, name: str) -> str:
+    """Product id for a row in base mode; the raw value after reporting E038 when nothing matches."""
+    products = ctx.base_products
+    hit = resolve_team(value, products)
+    if hit is not None:
+        return hit
+    ctx.diags.error(
+        Code.E038,
+        ctx.pos(row.line, "product"),
+        column=ctx.cols.header("product"),
+        project=name,
+        product=value,
+        hint=team_hint(value, products),
+    )
+    ctx.suppress.add((row.line, Code.E038))
+    return value
 
 
 def _skeleton_team(ctx: _Context, row: CsvRecord, team_raw: str) -> str:
@@ -172,6 +209,9 @@ def _project(ctx: _Context, row: CsvRecord) -> _Row:
         team = _base_team(ctx, row, team_raw, name)
         if team is not None:
             node["team"] = team
+        product_raw = cols.cell(cells, "product")  # resolve_columns drops the column in skeleton mode
+        if product_raw:
+            node["product"] = _base_product(ctx, row, product_raw, name)
     start_raw = cols.cell(cells, "start")
     if start_raw:
         start = parse_start(start_raw)
@@ -208,7 +248,7 @@ def _project(ctx: _Context, row: CsvRecord) -> _Row:
 
 def _validate(raw: RawDoc, ctx: _Context) -> None:
     """The normal validator on the converted tree, without scheduling (RS CV-17). Diagnostics already reported
-    by convert for the same CSV row (E030, E105, E011) suppress the validator's follow-up ones."""
+    by convert for the same CSV row (E030, E038, E105, E011) suppress the validator's follow-up ones."""
     # Imported here so the pure conversion steps stay importable while the model package evolves.
     from rt.model.build import build_model
     from rt.model.references import check_references
@@ -236,6 +276,7 @@ def convert_csv(table: CsvTable, base: RawDoc | None, opts: ConvertOptions, diag
         root = base.root
         ctx = _Context(table, cols, opts, diags, _column_cells(cols), base_size_labels(root), base=base)
         ctx.base_teams = base_teams(root)
+        ctx.base_products = base_products(root)
     else:
         skeleton = Skeleton(
             title=opts.title if opts.title is not None else DEFAULT_TITLE,
@@ -281,4 +322,13 @@ def _place_projects(doc: CommentedMap, projects: list[CommentedMap], append: boo
     doc["projects"] = CommentedSeq(keep + projects)
 
 
-__all__ = ["BaseTeam", "base_size_labels", "base_teams", "convert_csv", "resolve_team", "team_hint"]
+__all__ = [
+    "BaseProduct",
+    "BaseTeam",
+    "base_products",
+    "base_size_labels",
+    "base_teams",
+    "convert_csv",
+    "resolve_team",
+    "team_hint",
+]

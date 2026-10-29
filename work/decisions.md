@@ -13,6 +13,27 @@ Tester questions with more detail: `work/questions.md` (Q-1 … Q-7).
 | RS 12.3 | Dependency lag or start-to-start links? | No: finish-to-start only, as in version 1. |
 | ADS 13.2 | PyPI name | Keep `rt-roadmap` (PyPI publishing stays commented out in `release.yml` until first release). |
 
+## CR-1 Products (implemented 29 Oct 2026)
+
+`work/cr-products.md` is built in full: RS and ADS updated (sections listed at the top of each), 32-colour palette,
+product colours, E024/E025/E038/E039, W013/W014, widened W009, legend row, tooltip line, `data-product`, plan
+`product`/`products`, `rt convert` `product` column, schema, both oracles, `products-example.yaml` + expected plan,
+`products` block in `roadmap.example.yaml`, AT-56 … AT-65. The expected WE and DE plans changed only by
+`"product": null` and `"products": []` (every colour unchanged). Choices the CR left open:
+
+| # | Topic | Decision | Why |
+| --- | --- | --- | --- |
+| P1 | "ties to the lowest index" when all 32 entries are taken | Lowest palette index, so product 33 takes indigo (0), product 34 green (1) | Literal reading; by then products already use 0–9 |
+| P2 | Pinned versus automatic products | Every pinned product takes its entry first, whatever its file position; automatic products then skip it | A pin reserves the colour; otherwise a later pin could clash with an earlier automatic product |
+| P3 | W009 wording | `… both pinned to "sky"` when both bars are project pins, else `… both coloured "teal"` | The old text says "pinned", which is wrong for a product colour |
+| P4 | W013 / W014 names and position | Product names (as in the CR examples), at the product's first key; W014 names the first product that holds the shared entry | Same location rule as projects |
+| P5 | Products without visible bars | Still get a colour (legend and plan); `products[*].projects` lists hidden projects too | Membership, not visibility |
+| P6 | DSATUR saturation | Counts every neighbour colour, 10–31 included (affects pick order only) | "Distinct colours among neighbours", as CO-5 says |
+| P7 | Hook and tooltip order | `data-product` right after `data-team`; the `Product:` tooltip line right after `Team:` | Mirrors the plan, where `product` follows `team` |
+| P8 | Product `description` | Shown in the legend chip's `title` | The CR gives the field but no place to show it |
+| P9 | `rt convert` | `product` written after `team` (CV-18 order); E038 suggestion case-insensitive over ids and names (like E030); skeleton W020 reads `column "Produkt" is ignored without --base` | Same rules as the team column |
+| P10 | EX | Products BLIK and Tokenizacja kart added; still exactly one warning, now at line 252 (was 226), so two CLI tests changed their line number | CR section 8 item 6 |
+
 ## Interpretations where the RS is silent or ambiguous
 
 | # | Topic | Decision | Why |

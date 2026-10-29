@@ -1,0 +1,93 @@
+# Products example (requirements spec sections 3.2, 5.2, AT-56 to AT-58, AT-63).
+# Two products: BLIK (owned by Kanały płatności) has projects in teams of both
+# subdomains; Raporty (owned by Merchant) pins one project to sky. The other
+# projects are standalone and are coloured from palette entries 0-9 only.
+version: 1
+
+roadmap:
+  title: Products example
+  horizon: { start: 2027-01, end: 2027-06 }
+  today: 2027-02-15
+  content_language: pl
+
+sizes:
+  S: 2
+  M: 4
+  L: 8
+
+subdomains:
+  - id: channels
+    name: Kanały płatności
+    teams:
+      - id: blik
+        name: BLIK i przelewy
+        parallel_projects: 2
+      - id: app
+        name: Aplikacja mobilna
+        parallel_projects: 1
+  - id: merchant
+    name: Merchant
+    teams:
+      - id: portal
+        name: Portal merchanta
+        parallel_projects: 2
+
+products:
+  - id: blik
+    name: BLIK
+    domain: channels
+    owner: Anna Kowalska
+    description: Płatności BLIK we wszystkich kanałach
+  - id: raporty
+    name: Raporty
+    domain: merchant
+    owner: Piotr Nowak
+
+projects:
+  - id: blik-recurring
+    name: Płatności cykliczne BLIK
+    team: blik
+    product: blik
+    start: 2027-01
+    size: L
+  - name: Przebudowa Pay-by-link
+    team: blik
+    start: 2027-01
+    size: M
+  - name: BLIK w aplikacji
+    team: app
+    product: blik
+    size: M
+    depends_on: [blik-recurring]
+  - name: Widżety Android
+    team: app
+    start: 2027-01
+    size: S
+  - name: BLIK w portalu
+    team: portal
+    product: blik
+    start: 2027-02
+    size: M
+  - name: Raport dzienny
+    team: portal
+    product: raporty
+    start: 2027-01
+    size: S
+  - name: Eksport CSV
+    team: portal
+    product: raporty
+    start: 2027-03
+    size: M
+    color: sky              # a project pin wins over its product's colour
+  - name: Zwroty w portalu
+    team: portal
+    start: 2027-03
+    size: S
+  - name: Utrzymanie portalu
+    team: portal
+    ongoing: true
+    start: 2027-04
+  - name: Przelewy natychmiastowe
+    team: blik
+    start: 2027-02
+    size: M

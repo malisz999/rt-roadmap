@@ -15,7 +15,7 @@ from fractions import Fraction
 from rt.decimalutil import fmt4, half_up, pct, px
 from rt.layout import geometry as g
 from rt.model.types import Capacity, Mode, Subdomain, Team
-from rt.plan.types import Plan, PlannedProject, TeamPlan
+from rt.plan.types import Plan, PlannedProject, ProductPlan, TeamPlan
 from rt.schedule.types import (
     CLIPPED_LEFT,
     CLIPPED_RIGHT,
@@ -34,6 +34,7 @@ __all__ = [
     "KpiVM",
     "LaneVM",
     "LeadVM",
+    "LegendProductVM",
     "LegendVM",
     "LoadCellVM",
     "LoadRowVM",
@@ -192,8 +193,23 @@ class LegendSizeVM:
 
 
 @dataclass(frozen=True, slots=True)
+class LegendProductVM:
+    """One product chip (RS 7.2 item 2): colour, name, owning domain and owner."""
+
+    id: str
+    name: str
+    details: str  # ` · Kanały płatności · Anna Kowalska`
+    color_index: str  # empty for a custom hex colour
+    fill: str
+    accent: str
+    ink: str
+    title: str
+
+
+@dataclass(frozen=True, slots=True)
 class LegendVM:
     sizes: tuple[LegendSizeVM, ...]
+    products: tuple[LegendProductVM, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -317,7 +333,9 @@ def build_page(plan: Plan, *, summary: bool, version: str) -> PageVM:
         horizon_months=plural(n_months, "month", "months"),
         as_of=f"As of {fmt_date(plan.today)}",
         mode_label=f"Conflicts: {Mode(plan.on_conflict).value}",
-        legend=LegendVM(tuple(LegendSizeVM(s.label, f"{s.weeks}w") for s in plan.model.model.sizes)),
+        legend=LegendVM(
+            tuple(LegendSizeVM(s.label, f"{s.weeks}w") for s in plan.model.model.sizes), _legend_products(plan)
+        ),
         summary=_summary(plan, scale) if summary else None,
         years=_spans(g.year_spans(scale), scale, lambda s: s.label),
         quarters=_spans(g.quarter_spans(scale), scale, lambda s: f"{s.label} {s.first.year}"),
@@ -331,6 +349,34 @@ def build_page(plan: Plan, *, summary: bool, version: str) -> PageVM:
         version=version,
         css_vars=(f":root{{--tw:{px(scale.width)}px;--mw:{settings.month_width}px;--label:{g.LABEL_WIDTH}px}}"),
     )
+
+
+def _owned_by(plan: Plan, pr: ProductPlan) -> tuple[str, str | None]:
+    """The owning domain's name and the product owner."""
+    names = {s.id: s.name for s in plan.model.subdomains}
+    return names.get(pr.domain, pr.domain), pr.owner
+
+
+def _legend_products(plan: Plan) -> tuple[LegendProductVM, ...]:
+    out: list[LegendProductVM] = []
+    for pr in plan.products:
+        domain, owner = _owned_by(plan, pr)
+        details = " · ".join(x for x in (domain, owner) if x)
+        description = plan.model.model.product(pr.id).description
+        title = f"Product {pr.name}, owned by {domain}" + (f" ({owner})" if owner else "")
+        out.append(
+            LegendProductVM(
+                id=pr.id,
+                name=pr.name,
+                details=f" · {details}",
+                color_index="" if pr.color_index is None else str(pr.color_index),
+                fill=pr.color.fill,
+                accent=pr.color.accent,
+                ink=pr.color.text,
+                title=f"{title}: {description}" if description else title,
+            )
+        )
+    return tuple(out)
 
 
 def _spans(spans: Sequence[g.Span], scale: g.Scale, title: Callable[[g.Span], str]) -> tuple[SpanVM, ...]:
@@ -559,7 +605,7 @@ def _bar(
             lead = LeadVM(px(lbox.left), px(lbox.width), cut)
 
     description = plan.model.projects[p.seq - 1].description or None
-    rows = _facts(p, team, by_seq, teams_by_id, subdomain_names)
+    rows = _facts(plan, p, team, by_seq, teams_by_id, subdomain_names)
     lines = [p.name] + [f"{r.key}: {r.value}" for r in rows]
     if description:
         lines.append(description)
@@ -567,6 +613,7 @@ def _bar(
     data = (
         ("data-seq", str(p.seq)),
         ("data-team", p.team),
+        ("data-product", p.product or ""),
         ("data-lane", str(p.lane)),
         ("data-requested", p.requested_start.isoformat() if p.requested_start else "auto"),
         ("data-start", p.start.isoformat()),
@@ -601,14 +648,20 @@ def _bar(
 
 
 def _facts(
+    plan: Plan,
     p: PlannedProject,
     team: Team,
     by_seq: Mapping[int, PlannedProject],
     teams_by_id: Mapping[str, Team],
     subdomain_names: Mapping[str, str],
 ) -> list[TipRow]:
-    """Tooltip facts in RS OUT-18 order: team; size; requested start; actual start; last day; delay; After."""
+    """Tooltip facts in RS OUT-18 order: team; product; size; requested start; actual start; last day; delay;
+    After."""
     rows = [TipRow("Team", team.name)]
+    if p.product is not None:
+        pr = next(x for x in plan.products if x.id == p.product)
+        domain, owner = _owned_by(plan, pr)
+        rows.append(TipRow("Product", f"{pr.name} · owned by {domain}" + (f" ({owner})" if owner else "")))
     if p.ongoing or p.size is None:
         rows.append(TipRow("Size", "Ongoing"))
     else:

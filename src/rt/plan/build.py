@@ -8,7 +8,8 @@ from decimal import Decimal
 
 import rt
 from rt.color.adjacency import neighbours
-from rt.color.dsatur import assign_colors
+from rt.color.dsatur import assign_colors, product_keys
+from rt.color.palette import ColorKey, key_ref
 from rt.color.types import ColorRef
 from rt.decimalutil import ratio4
 from rt.diagnostics import Code, Collector, Diagnostic
@@ -19,6 +20,7 @@ from rt.plan.types import (
     Plan,
     PlannedProject,
     PlanWarning,
+    ProductPlan,
     SubdomainLoad,
     TeamLoad,
     TeamPlan,
@@ -57,15 +59,18 @@ def compute_plan(model: ResolvedModel, diags: Collector) -> Plan | None:
     vis = visibility(model, sched, horizon)
     project_warnings(model, sched, vis, diags)
     nb = neighbours(model, sched, vis, settings.adjacency_gap_days)
-    colors = assign_colors(model, vis, nb, diags)
+    pkeys = product_keys(model, diags)
+    colors = assign_colors(model, vis, nb, diags, pkeys)
     util = utilisation(model, sched, horizon, vis)
     load = monthly_load(model, sched, horizon)
-    return build_plan(model, sched, horizon, vis, nb, colors, util, load, diags)
+    return build_plan(model, sched, horizon, vis, nb, colors, util, load, diags, pkeys)
 
 
 def structure_warnings(m: ResolvedModel, diags: Collector) -> None:
-    """W005 (team without projects), W006 (subdomain without teams), W008 (capacity given, 0 people), W010."""
+    """W005 (team without projects), W006 (subdomain without teams), W008 (capacity given, 0 people), W010,
+    W013 (product without projects)."""
     teams_with_projects = {p.team_id for p in m.projects}
+    products_with_projects = {p.product_id for p in m.projects}
     for sd in m.subdomains:
         if not sd.team_ids:
             diags.warning(Code.W006, sd.pos, subdomain=sd.id)
@@ -74,6 +79,9 @@ def structure_warnings(m: ResolvedModel, diags: Collector) -> None:
             diags.warning(Code.W005, team.pos, team=team.id)
         if team.capacity_given and team.capacity.total == 0:
             diags.warning(Code.W008, team.pos, team=team.id)
+    for pr in m.products:
+        if pr.id not in products_with_projects:
+            diags.warning(Code.W013, pr.pos, product=pr.name)
     if not m.projects:
         diags.warning(Code.W010, m.settings.pos)
 
@@ -130,6 +138,7 @@ def build_plan(
     util: Mapping[str, Ratio],
     load: LoadTable,
     diags: Collector,
+    product_colors: Mapping[str, ColorKey] | None = None,
 ) -> Plan:
     """Assemble the Plan from the computed parts; warnings are taken from the collector as they stand."""
     teams = tuple(
@@ -144,6 +153,9 @@ def build_plan(
         for t in m.teams
     )
     projects = tuple(_planned(m, pl.seq, s, vis, nb, colors) for pl in s.placements)
+    if product_colors is None:  # callers that skip compute_plan: the same colours, warnings not collected
+        product_colors = product_keys(m, Collector(m.model.source))
+    products = tuple(_product(m, pr.id, product_colors[pr.id]) for pr in m.products)
     monthly = MonthlyLoad(
         months=load.months,
         teams=tuple(TeamLoad(r.key, _load_values(r), r.occupied, r.capacity) for r in load.teams),
@@ -162,11 +174,28 @@ def build_plan(
         horizon=HorizonOut(h.start, h.end, h.h0, h.h1, h.days),
         on_conflict=settings.on_conflict,
         teams=teams,
+        products=products,
         projects=projects,
         monthly_load=monthly,
         warnings=tuple(PlanWarning(d.code.name, d.line, d.col, d.message) for d in warnings),
         model=m,
         diagnostics=tuple(warnings),
+    )
+
+
+def _product(m: ResolvedModel, product_id: str, key: ColorKey) -> ProductPlan:
+    pr = m.model.product(product_id)
+    color = key_ref(key)
+    return ProductPlan(
+        id=pr.id,
+        name=pr.name,
+        domain=pr.domain_id,
+        owner=pr.owner,
+        color_index=color.index,
+        color_name=color.name,
+        color_fill=color.fill,
+        projects=tuple(p.seq for p in m.projects if p.product_id == product_id),
+        color=color,
     )
 
 
@@ -187,6 +216,7 @@ def _planned(
         id=p.id,
         name=p.name or "",
         team=pl.team_id,
+        product=p.product_id,
         size=None if p.ongoing else p.size,
         weeks=None if p.ongoing else m.weeks.get(seq),
         ongoing=p.ongoing,

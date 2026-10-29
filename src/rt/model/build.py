@@ -1,5 +1,7 @@
 """RawDoc → Model + diagnostics (structure): E002, E004, E010–E013, E032, E033, E040–E043 (ADS 4.2, 8.2).
 
+Subdomains, teams, products and projects are built in that order; references between them are checked later.
+
 Every position comes from RawDoc (value_pos, key_pos, item_pos, node_pos), so rows built by rt convert report
 their CSV line and field number, and messages about a CSV cell end with ` [column "…"]` (RS CV-5, CV-17).
 """
@@ -21,6 +23,7 @@ from rt.model.types import (
     Mode,
     Model,
     Overrides,
+    Product,
     Project,
     Settings,
     Size,
@@ -208,6 +211,7 @@ class _Builder:
         settings = self.settings(top, overrides)
         sizes = self.sizes(top)
         subdomains, teams = self.subdomains(top)
+        products = self.products(top)
         projects = self.projects(top)
         return Model(
             settings=settings,
@@ -216,6 +220,7 @@ class _Builder:
             teams=teams,
             projects=projects,
             source=raw.source,
+            products=products,
         )
 
     def version(self, top: _Ent) -> bool:
@@ -439,6 +444,65 @@ class _Builder:
             incomplete=ent.bad,
         )
 
+    def products(self, top: _Ent) -> tuple[Product, ...]:
+        """The optional `products` list (absent = empty); items without a usable id are reported and dropped."""
+        items = self.sequence(top, "products")
+        if items is None:
+            return ()
+        out: list[Product] = []
+        for index, node in enumerate(items, start=1):
+            if not F.is_mapping(node):
+                self.diags.report(
+                    Code.E011,
+                    self.raw.item_pos(items, index - 1),
+                    detail=f"product #{index} must be a mapping, got {F.describe(node)}",
+                )
+                continue
+            ent = _Ent(node, where=f"product #{index}", missing_where=f"product #{index}")
+            pid = self.ident(ent, "id", "product", required=True)
+            if pid is not None:
+                ent.where = f'product "{pid}"'
+            self.unknown_keys(ent, F.PRODUCT_KEYS)
+            name = self.string(ent, "name", F.PRODUCT_NAME_LEN, required=True)
+            domain = self.get(ent, "domain", required=True)
+            domain_id: str | None = None
+            if isinstance(domain, str):
+                domain_id = domain
+            elif domain is not MISSING:
+                self.fail(ent, Code.E011, "domain", detail=f'"domain" must be a subdomain id, got {F.describe(domain)}')
+            owner = self.string(ent, "owner", F.PRODUCT_OWNER_LEN)
+            description = self.string(ent, "description", F.PRODUCT_DESCRIPTION_LEN)
+            color = self.color(ent)
+            if pid is None:
+                continue  # nothing can refer to it; its problems are reported
+            out.append(
+                Product(
+                    id=pid,
+                    name=name if name is not None else pid,
+                    domain_id=domain_id if domain_id is not None else "",
+                    owner=owner or None,
+                    description=description or None,
+                    color=color,
+                    pos=self.raw.node_pos(node),
+                    field_pos=MappingProxyType(dict(ent.field_pos)),
+                    incomplete=ent.bad,
+                )
+            )
+        return tuple(out)
+
+    def color(self, ent: _Ent) -> ColorSpec | None:
+        """A palette name or `#RRGGBB` (E033), shared by projects and products."""
+        value = self.get(ent, "color")
+        if isinstance(value, str):
+            if value in F.PALETTE_NAMES:
+                return ColorSpec(palette_name=value, hex=None, text=value)
+            if F.HEX_RE.match(value):
+                return ColorSpec(palette_name=None, hex=value.upper(), text=value)
+            self.fail(ent, Code.E033, "color", color=value)
+        elif value is not MISSING:
+            self.fail(ent, Code.E011, "color", detail=f'"color" must be a string, got {F.describe(value)}')
+        return None
+
     def projects(self, top: _Ent) -> tuple[Project, ...]:
         items = self.sequence(top, "projects", required=True)
         if items is None:
@@ -468,6 +532,13 @@ class _Builder:
             team_id = team
         elif team is not MISSING:
             self.fail(ent, Code.E011, "team", detail=f'"team" must be a team id, got {F.describe(team)}')
+
+        product = self.get(ent, "product")
+        product_id: str | None = None
+        if isinstance(product, str):
+            product_id = product
+        elif product is not MISSING:
+            self.fail(ent, Code.E011, "product", detail=f'"product" must be a product id, got {F.describe(product)}')
 
         start = self.month(ent, "start")
         if "start" in node and start is None:
@@ -500,17 +571,7 @@ class _Builder:
         refs = self.depends_on(ent)
         description = self.string(ent, "description", F.PROJECT_DESCRIPTION_LEN)
 
-        color: ColorSpec | None = None
-        color_value = self.get(ent, "color")
-        if isinstance(color_value, str):
-            if color_value in F.PALETTE_NAMES:
-                color = ColorSpec(palette_name=color_value, hex=None, text=color_value)
-            elif F.HEX_RE.match(color_value):
-                color = ColorSpec(palette_name=None, hex=color_value.upper(), text=color_value)
-            else:
-                self.fail(ent, Code.E033, "color", color=color_value)
-        elif color_value is not MISSING:
-            self.fail(ent, Code.E011, "color", detail=f'"color" must be a string, got {F.describe(color_value)}')
+        color = self.color(ent)
 
         return Project(
             seq=seq,
@@ -524,6 +585,7 @@ class _Builder:
             description=description,
             color=color,
             pos=raw.node_pos(node),
+            product_id=product_id,
             field_pos=MappingProxyType(dict(ent.field_pos)),
             field_column=MappingProxyType(dict(ent.field_column)),
             incomplete=ent.bad,

@@ -1,7 +1,8 @@
 """Property tests for scheduling and colouring (ADS 10.2) and the differential test against the oracle (ADS 10.1).
 
 Generated models: 1–5 teams with 1–4 slots, 0–40 projects, sizes 1–26 weeks, starts within 24 months or omitted,
-~10 % ongoing, dependencies only to earlier finite projects.
+~10 % ongoing, dependencies only to earlier finite projects; optionally 0–4 or 30–36 products (some pinned) with
+projects that reference them.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from rt.schedule.horizon import anchor
 
 EXAMPLES = int(os.environ.get("RT_HYPOTHESIS_EXAMPLES", "150"))  # CI: 500 (ADS 10.1)
 COLORS = ("indigo", "green", "orange", "pink", "sky", "amber", "violet", "teal", "lime", "sand")
+ALL_COLORS = (*COLORS, "blue", "cyan", "emerald", "yellow", "stone", "sand-deep", "sky-deep", "purple-deep")
 
 
 @dataclass(frozen=True)
@@ -37,10 +39,11 @@ class Spec:
     yaml: str
     has_pins: bool
     project_count: int
+    product_count: int = 0
 
 
 @st.composite
-def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0) -> Spec:
+def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0, products: bool = False) -> Spec:
     team_count = draw(st.integers(1, 5))
     split = draw(st.integers(1, team_count))  # teams [0, split) in subdomain one, the rest in two
     slots = [draw(st.integers(1, 4)) for _ in range(team_count)]
@@ -59,10 +62,19 @@ def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0) -> S
         lines += [f"  - id: {sd}", f"    name: {sd}", "    teams:"]
         for t in teams:
             lines += [f"      - id: t{t}", f"        name: T{t}", f"        parallel_projects: {slots[t]}"]
+    product_count = draw(st.integers(0, 4) | st.integers(30, 36)) if products else 0
+    domains = ["one"] if split == team_count else ["one", "two"]
+    has_pins = False
+    if product_count:
+        lines.append("products:")
+    for q in range(product_count):
+        lines += [f"  - id: q{q}", f"    name: Q{q}", f"    domain: {draw(st.sampled_from(domains))}"]
+        if pins and draw(st.integers(0, 5)) == 0:
+            has_pins = True
+            lines.append(f"    color: {draw(st.sampled_from(ALL_COLORS))}")
     lines.append("projects:")
     count = draw(st.integers(min_projects, 40))
     finite: list[int] = []
-    has_pins = False
     if count == 0:
         lines[-1] = "projects: []"
     for seq in range(1, count + 1):
@@ -80,10 +92,12 @@ def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0) -> S
             lines.append(f"    depends_on: [{', '.join(f'p{d}' for d in deps)}]")
         if pins and draw(st.integers(0, 4)) == 0:
             has_pins = True
-            lines.append(f"    color: {draw(st.sampled_from(COLORS))}")
+            lines.append(f"    color: {draw(st.sampled_from(ALL_COLORS if products else COLORS))}")
+        if product_count and draw(st.booleans()):
+            lines.append(f"    product: q{draw(st.integers(0, product_count - 1))}")
         if not ongoing:
             finite.append(seq)
-    return Spec("\n".join(lines) + "\n", has_pins, count)
+    return Spec("\n".join(lines) + "\n", has_pins, count, product_count)
 
 
 def plan_of(text: str, **kw: Any) -> tuple[Plan | None, Collector]:
@@ -137,25 +151,39 @@ def test_schedule_invariants(spec: Spec, mode: str) -> None:
 
 
 @settings(max_examples=EXAMPLES, deadline=None, suppress_health_check=[HealthCheck.too_slow])
-@given(spec=roadmaps(pins=True))
+@given(spec=roadmaps(pins=True, products=True))
 def test_colouring_invariants(spec: Spec) -> None:
     plan, _ = plan_of(spec.yaml)
     if plan is None:
         return
     w007 = any(w.code == "W007" for w in plan.warnings)
     w009 = any(w.code == "W009" for w in plan.warnings)
+    w014 = sum(w.code == "W014" for w in plan.warnings)
     by_seq = {p.seq: p for p in plan.projects}
+    product_index = {pr.id: pr.color_index for pr in plan.products}
+    pinned = {p.seq for p in plan.model.projects if p.color is not None}
     for p in plan.projects:
         if p.visible is None:
             assert p.color_index is None and not p.neighbors
             continue
         assert p.color_index is not None
+        if p.seq not in pinned:
+            if p.product is None:  # RS 5.2 step 3: standalone bars use entries 0–9 only
+                assert p.color_index < 10
+            else:  # step 2: the product colour
+                assert p.color_index == product_index[p.product]
         for n in p.neighbors:
             assert p.seq in by_seq[n].neighbors
-            if not w007 and not w009:
+            same_product = p.product is not None and by_seq[n].product == p.product
+            if not w007 and not w009 and not same_product:
                 assert by_seq[n].color_index != p.color_index
     if not spec.has_pins and all(len(p.neighbors) < 10 for p in plan.projects):
         assert not w007
+    # Automatic product colours: distinct while the palette lasts, 10–31 first (RS 5.2); W014 for each extra one.
+    if not spec.has_pins:
+        indices = [pr.color_index for pr in plan.products]
+        assert indices == [(*range(10, 32), *range(10))[i % 32] for i in range(len(indices))]
+        assert w014 == max(0, len(indices) - 32)
 
 
 def _normalise(data: dict[str, Any]) -> dict[str, Any]:
@@ -173,7 +201,7 @@ def _normalise(data: dict[str, Any]) -> dict[str, Any]:
 
 
 @settings(max_examples=EXAMPLES, deadline=None, suppress_health_check=[HealthCheck.too_slow])
-@given(spec=roadmaps(min_projects=1), mode=st.sampled_from(["delay", "delay", "overflow"]))
+@given(spec=roadmaps(min_projects=1, pins=True, products=True), mode=st.sampled_from(["delay", "delay", "overflow"]))
 def test_differential_against_reference_oracle(spec: Spec, mode: str) -> None:
     ref_module = oracle()
     with tempfile.TemporaryDirectory() as tmp:

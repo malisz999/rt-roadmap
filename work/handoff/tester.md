@@ -33,3 +33,9 @@ No test is xfail; each assumption is stated in the question and the test docstri
 ## Note
 Once during this session `ruff format tests` was run on the whole tests/ tree by mistake; it may have
 reformatted tests/unit/test_io_streams.py (formatting only, no semantic change).
+
+## CR-1 Products (29 Oct 2026)
+- New: `tests/acceptance/test_at_products.py` (AT-56 … AT-65), `PE`/`PE_PLAN` and `pe_render` in conftest,
+  catalogue fixtures e024, e025, e038, e039, w013, w014; traceability range now AT-01 … AT-65.
+- Changed: AT-10 allows product colours (10–31) and same-product neighbours; AT-19/AT-20 expect the EX W001 at
+  line 252 (EX gained a `products` block).

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://rt.local/schema/roadmap-v1.json",
   "title": "rt roadmap input, format version 1",
-  "description": "Input file for the rt roadmap renderer. Cross-reference rules (team ids, size keys, uniqueness, one of size/ongoing) are also enforced by rt itself; see the specification, section 3.",
+  "description": "Input file for the rt roadmap renderer. Cross-reference rules (team, product and domain ids, size keys, uniqueness, one of size/ongoing) are also enforced by rt itself; see the specification, section 3.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -130,6 +130,13 @@
         }
       }
     },
+    "products": {
+      "type": "array",
+      "description": "Optional named groups of projects, each owned by one domain. File order is legend order.",
+      "items": {
+        "$ref": "#/$defs/product"
+      }
+    },
     "projects": {
       "type": "array",
       "description": "Scheduled in exactly this order; dependencies must point upwards.",
@@ -158,6 +165,51 @@
       "minimum": 0,
       "maximum": 999,
       "default": 0
+    },
+    "color": {
+      "anyOf": [
+        {
+          "enum": [
+            "indigo",
+            "green",
+            "orange",
+            "pink",
+            "sky",
+            "amber",
+            "violet",
+            "teal",
+            "lime",
+            "sand",
+            "blue",
+            "cyan",
+            "emerald",
+            "yellow",
+            "fuchsia",
+            "purple",
+            "stone",
+            "sand-deep",
+            "indigo-deep",
+            "green-deep",
+            "orange-deep",
+            "pink-deep",
+            "sky-deep",
+            "amber-deep",
+            "violet-deep",
+            "teal-deep",
+            "lime-deep",
+            "blue-deep",
+            "cyan-deep",
+            "emerald-deep",
+            "fuchsia-deep",
+            "purple-deep"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      ],
+      "description": "A palette name (RS 5.3) or #RRGGBB; pins the colour."
     },
     "team": {
       "type": "object",
@@ -202,6 +254,43 @@
         }
       }
     },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "domain"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "Unique among products; referenced by project.product."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Unique among products."
+        },
+        "domain": {
+          "$ref": "#/$defs/id",
+          "description": "The owning domain: a subdomain id."
+        },
+        "owner": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "color": {
+          "$ref": "#/$defs/color",
+          "description": "Pins the product colour; otherwise assigned automatically."
+        }
+      }
+    },
     "project": {
       "type": "object",
       "additionalProperties": false,
@@ -223,6 +312,10 @@
         "team": {
           "$ref": "#/$defs/id",
           "description": "Must equal a team id."
+        },
+        "product": {
+          "$ref": "#/$defs/id",
+          "description": "Optional: a product id. Without it the project is standalone."
         },
         "start": {
           "$ref": "#/$defs/month",
@@ -257,26 +350,8 @@
           "maxLength": 500
         },
         "color": {
-          "anyOf": [
-            {
-              "enum": [
-                "indigo",
-                "green",
-                "orange",
-                "pink",
-                "sky",
-                "amber",
-                "violet",
-                "teal",
-                "lime",
-                "sand"
-              ]
-            },
-            {
-              "type": "string",
-              "pattern": "^#[0-9A-Fa-f]{6}$"
-            }
-          ]
+          "$ref": "#/$defs/color",
+          "description": "Pins the bar colour, also over its product's colour."
         }
       },
       "oneOf": [

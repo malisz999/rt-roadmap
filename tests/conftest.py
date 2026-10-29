@@ -32,6 +32,8 @@ WE_PLAN = FIXTURES / "scheduling-worked-example.expected.json"
 DE = FIXTURES / "dependencies-example.yaml"
 DE_PLAN = FIXTURES / "dependencies-example.expected.json"
 EX = FIXTURES / "roadmap.example.yaml"
+PE = FIXTURES / "products-example.yaml"
+PE_PLAN = FIXTURES / "products-example.expected.json"
 MINIMAL = FIXTURES / "roadmap.minimal.yaml"
 SCHEMA = FIXTURES / "roadmap.schema.json"
 
@@ -415,6 +417,12 @@ def we_overflow_render(tmp_path_factory: pytest.TempPathFactory) -> Rendered:
 def de_render(tmp_path_factory: pytest.TempPathFactory) -> Rendered:
     """``rt render DE --plan p.json`` (AT-26..AT-29)."""
     return render_fixture(tmp_path_factory.mktemp("de"), DE)
+
+
+@pytest.fixture(scope="session")
+def pe_render(tmp_path_factory: pytest.TempPathFactory) -> Rendered:
+    """``rt render PE --plan p.json``: the products example (AT-56..AT-58, AT-63)."""
+    return render_fixture(tmp_path_factory.mktemp("pe"), PE)
 
 
 @pytest.fixture(scope="session")

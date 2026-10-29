@@ -74,6 +74,7 @@ def test_bars_of_the_worked_example(we: PageVM) -> None:
     assert dict(r.data) == {
         "data-seq": "3",
         "data-team": "alpha",
+        "data-product": "",
         "data-lane": "2",
         "data-requested": "2027-01-01",
         "data-start": "2027-01-29",
@@ -306,3 +307,55 @@ projects:
     assert page.summary is not None and [r.name for r in page.summary.rows] == ["Core", "Zespół", "All teams"]
     assert all(isinstance(c.load, str) for r in page.summary.rows for c in r.cells)
     assert Decimal(page.sections[1].teams[0].utilization) > 0
+
+
+# --- products (RS 7.2, OUT-18, 7.10) ------------------------------------------------------------------------
+
+PRODUCTS = plankit.FIXTURES / "products-example.yaml"
+
+
+def test_products_legend_tooltip_and_hook() -> None:
+    page = page_of(plankit.plan_from_file(PRODUCTS))
+    blik, raporty = page.legend.products
+    assert (blik.id, blik.name, blik.details, blik.color_index) == (
+        "blik",
+        "BLIK",
+        " · Kanały płatności · Anna Kowalska",
+        "10",
+    )
+    assert (blik.fill, blik.accent, blik.ink) == ("#BFDBFE", "#3B82F6", "#1E293B")
+    assert (
+        blik.title == "Product BLIK, owned by Kanały płatności (Anna Kowalska): Płatności BLIK we wszystkich kanałach"
+    )
+    assert raporty.title == "Product Raporty, owned by Merchant (Piotr Nowak)"
+    b = bars(page)
+    portal = b["BLIK w portalu"]
+    assert dict(portal.data)["data-product"] == "blik"
+    assert [k for k, _ in portal.data][:3] == ["data-seq", "data-team", "data-product"]
+    assert portal.title.split("\n")[1:3] == [
+        "Team: Portal merchanta",
+        "Product: BLIK · owned by Kanały płatności (Anna Kowalska)",
+    ]
+    assert dict(b["Zwroty w portalu"].data)["data-product"] == ""
+    assert "Product:" not in b["Zwroty w portalu"].title
+
+
+def test_product_without_owner_and_with_custom_colour() -> None:
+    plan = plankit.plan_from_file(PRODUCTS)
+    custom = ColorRef(None, None, "#123456", "#0B2236", "#FFFFFF")
+    model = plan.model.model
+    products = tuple(dataclasses.replace(p, owner=None, description=None) for p in model.products)
+    resolved = dataclasses.replace(plan.model, model=dataclasses.replace(model, products=products))
+    plans = tuple(
+        dataclasses.replace(p, owner=None, color=custom, color_index=None, color_name=None, color_fill="#123456")
+        for p in plan.products
+    )
+    page = page_of(dataclasses.replace(plan, products=plans, model=resolved))
+    chip = page.legend.products[0]
+    assert (chip.details, chip.color_index, chip.fill, chip.ink) == (" · Kanały płatności", "", "#123456", "#FFFFFF")
+    assert chip.title == "Product BLIK, owned by Kanały płatności"
+    assert "Product: BLIK · owned by Kanały płatności\n" in bars(page)["BLIK w portalu"].title
+
+
+def test_no_products_no_legend_row(we: PageVM) -> None:
+    assert we.legend.products == ()

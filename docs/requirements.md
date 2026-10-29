@@ -2,6 +2,8 @@
 
 Oct 23, 2026 · @Artur
 
+Revised Oct 29, 2026: CR-1 products (sections 2, 3.2, 3.4, 5, 6.6, 7.2, 7.10, 8, 9, 11.7, 12.1, 13.2).
+
 ## 1. Introduction
 
 **rt (roadmap tool)** is a command-line tool that reads one human-written YAML file (from a path or standard input) describing teams, t-shirt sizes and projects, schedules the projects into each team's parallel slots, and writes one self-contained HTML file showing the roadmap as month-scaled swimlanes grouped by subdomain.
@@ -26,7 +28,7 @@ Oct 23, 2026 · @Artur
 **In scope (version 1):**
 
 - Input: one YAML file (JSON also accepted, being valid YAML 1.2), read from a path or from standard input. Project names and other text may be in Polish.
-- Definitions: subdomains, teams (role capacity, parallel project slots), t-shirt sizes in weeks, projects (name, size or ongoing, team, optional start month, optional dependencies).
+- Definitions: subdomains, teams (role capacity, parallel project slots), t-shirt sizes in weeks, projects (name, size or ongoing, team, optional start month, optional dependencies), optional products (named groups of projects owned by one domain, drawn in one colour).
 - Scheduling: deterministic slot assignment in file order, honouring finish-to-start dependencies, with conflict handling (`delay`, `overflow` or `error`).
 - Output: one HTML file with embedded CSS, no external resources, no JavaScript required; quarters labelled Q1–Q4; optional summary section with monthly load (`--summary`). Written to a file or to standard output.
 - Command chaining: every command reads standard input and writes standard output, so commands combine with each other and with other tools in shell pipelines (section 6.5).
@@ -47,6 +49,9 @@ Oct 23, 2026 · @Artur
 | T-shirt size | A label (XS, S, M…) mapped to an exact whole number of weeks in the file. |
 | Project | A unit of work with a name, a team, either a size or `ongoing: true`, and optionally a start month and dependencies. |
 | Ongoing project | A project with no end (e.g. maintenance). Occupies its slot permanently from its start. |
+| Product | A named group of projects owned by exactly one domain (a subdomain id). Its projects may run in teams of any subdomain; all its bars share the product's colour. |
+| Owning domain | The subdomain that owns a project: its product's `domain`, or for a standalone project its team's subdomain. Shown in the tooltip and the legend; bars stay in the section of the team that does the work. |
+| Standalone project | A project without `product`. Coloured from palette entries 0–9 as in version 1. |
 | Dependency | Finish-to-start link: a project cannot start before each project it depends on has ended. |
 | Anchor | The earliest date for projects without a `start`: the horizon start if given, else the 1st of the current month (SC-12). |
 | Auto-start project | A project without `start`; it starts as soon as its dependencies have ended and a slot is free. |
@@ -101,10 +106,16 @@ subdomains:                # required: render order = file order
         name: BLIK Squad
         parallel_projects: 2
         capacity: { developers: 5, product_managers: 1, analysts: 1, testers: 2 }
+products:                  # optional: legend order = file order
+  - id: blik-online
+    name: BLIK online
+    domain: channels       # the owning domain: a subdomain id
+    owner: Anna Kowalska
 projects:                  # required: sequence = file order
   - id: blik-recurring
     name: Płatności cykliczne BLIK
     team: blik
+    product: blik-online   # optional: the bar takes the product's colour
     size: L
     start: 2027-01
   - name: Pay-by-link redesign
@@ -169,6 +180,17 @@ projects:                  # required: sequence = file order
 | `capacity.analysts` | integer | No (0) | 0–999 |
 | `capacity.testers` | integer | No (0) | 0–999 |
 
+**`products[]`** (optional list; absent = empty; file order = legend order)
+
+| Field | Type | Req. | Rules |
+| --- | --- | --- | --- |
+| `id` | string | Yes | `^[a-z0-9][a-z0-9_-]{0,39}$`, unique among products (a namespace of its own: a product may share an id with a team) |
+| `name` | string | Yes | 1–100 characters, unique among products |
+| `domain` | string | Yes | Must equal an existing subdomain id: the owning domain. The product's projects are owned by that domain, whichever team does the work |
+| `owner` | string | No | ≤ 100 characters, e.g. the product owner's name; shown in the legend and tooltip |
+| `description` | string | No | ≤ 500 characters, shown in the legend chip's tooltip |
+| `color` | string | No | Palette name (section 5.3) or `#RRGGBB`; pins the product colour |
+
 **`projects[]`** (required list; may be empty, which is W010)
 
 | Field | Type | Req. | Rules |
@@ -176,12 +198,13 @@ projects:                  # required: sequence = file order
 | `id` | string | No | `^[a-z0-9][a-z0-9_-]{0,39}$`, unique among projects; a stable handle for `depends_on` |
 | `name` | string | Yes | 1–100 characters, unique within its team; any Unicode, including Polish |
 | `team` | string | Yes | Must equal an existing team `id` |
+| `product` | string | No | Must equal a product `id`. A project without it is standalone; its owning domain is its team's subdomain. Bars are always drawn in the section of their team |
 | `start` | month | No | `YYYY-MM`; requested start = 1st of that month. Omitted → auto-start (SC-12) |
 | `size` | string | One of | Must be a key of `sizes` |
 | `ongoing` | boolean | One of | `true` marks a never-ending project. Exactly one of `size` or `ongoing: true` MUST be present. |
 | `depends_on` | list of strings | No | Each item is a project `id`, or a project `name` that is unique in the whole file. Every referenced project MUST appear earlier in the file, MUST NOT be ongoing, and MUST NOT be the project itself. Cross-team and cross-subdomain references are allowed. |
 | `description` | string | No | ≤ 500 characters, shown in the tooltip |
-| `color` | string | No | Palette name (section 5.3) or `#RRGGBB`; pins the colour |
+| `color` | string | No | Palette name (section 5.3) or `#RRGGBB`; pins the colour, also over the product's colour |
 
 ### 3.3 Parsing rules
 
@@ -214,6 +237,7 @@ A CSV project list holds one project per row under a header row of column names.
 | `name` | Yes | Project name | `name` |
 | `size` | Yes (the column) | T-shirt label; a cell may be empty only when `ongoing` is true | `size` |
 | `team` | No | Team id or team name | `team` (always written as the id) |
+| `product` | No | Product id or product name; used only with a base file (CV-21) | `product` (always written as the id) |
 | `subdomain` | No | Subdomain name; used only when no base file is given | — (skeleton, CV-14) |
 | `start` | No | `YYYY-MM`, `YYYY-MM-DD` or `DD.MM.YYYY`; empty = auto-start | `start` (`YYYY-MM`) |
 | `ongoing` | No | `true`, `yes`, `y`, `1`, `x`, `tak`, `t` or `false`, `no`, `n`, `0`, `nie`, empty; case-insensitive | `ongoing: true` when true, else omitted |
@@ -318,7 +342,7 @@ Project 6 depends on a project in another subdomain (OUT-28 shows such links wit
 
 ## 5. Colour assignment
 
-Bars that touch or sit close to each other on screen never share a colour, solved as a graph-colouring problem over a fixed 10-colour palette with a deterministic DSATUR algorithm that also spreads colours evenly.
+Bars that touch or sit close to each other on screen never share a colour, solved as a graph-colouring problem over a fixed palette with a deterministic DSATUR algorithm that also spreads colours evenly. All bars of a product share one colour, so a product is recognisable across the whole roadmap; standalone bars are coloured from the first 10 palette entries exactly as in version 1.
 
 ### 5.1 Adjacency graph
 
@@ -330,16 +354,22 @@ Bars that touch or sit close to each other on screen never share a colour, solve
 
 ### 5.2 Algorithm
 
-- **CO-4** Projects with an explicit `color` are coloured first and never changed. A palette name or a hex equal to a palette fill maps to that palette entry; any other hex is a custom colour that conflicts only with the same hex.
-- **CO-5** Then repeat until all bars are coloured (DSATUR):
+- **CO-4** Bars are coloured in this order, and a colour once given is never changed:
+  1. **Project pin.** A project with its own `color` uses it, also when it belongs to a product.
+  2. **Product colour.** Every other project of a product uses the product colour: the product's `color` when given; otherwise products without a pin, in file order, take the lowest-index palette entry not yet taken by any product (pinned products included), scanning entries **10–31 first, then 0–9**, so for up to 22 automatic products a product colour never equals a colour that standalone bars use. When all 32 entries are taken, the next product takes the entry used by the fewest products, ties to the lowest index, and W014 names the products that share.
+  3. **Standalone projects** are coloured by CO-5 **over entries 0–9 only**, treating the bars coloured in steps 1–2 as pre-coloured neighbours, so a standalone bar never takes the colour of an adjacent product bar (unless W007 applies).
+
+  A palette name or a hex equal to a palette fill maps to that palette entry; any other hex is a custom colour that conflicts only with the same hex and takes no palette entry. Two adjacent pre-coloured bars (steps 1–2) with the same colour give W009, except when both belong to the same product: bars of one product share a colour by design and never cause W007 or W009.
+- **CO-5** Then repeat until all bars are coloured (DSATUR over entries 0–9):
   1. Pick the uncoloured bar with the most distinct colours among its neighbours; ties → most neighbours in total; ties → earliest in file order.
-  2. Allowed colours = palette entries not used by any neighbour. Pick the one used **least so far across the whole roadmap**; ties → lowest palette index.
-  3. No allowed colour → pick the entry minimising (neighbours already using it, global use count, palette index) and emit W007.
+  2. Allowed colours = entries 0–9 not used by any neighbour. Pick the one used **least so far across the whole roadmap** (pre-coloured bars count); ties → lowest palette index.
+  3. No allowed colour → pick the entry of 0–9 minimising (neighbours already using it, global use count, palette index) and emit W007.
 - **CO-6** The same input MUST always yield the same colours.
+- **CO-7** Compatibility: a file without `products` and without palette names beyond the first 10 gets exactly the colours of version 1.
 
 ### 5.3 Palette
 
-Soft fills with a strong left accent and one dark text colour `#1E293B`, giving at least 9:1 text contrast on every fill (WCAG AAA). Red is deliberately absent; it is reserved for over-capacity and Today markers.
+Soft fills with a strong left accent and one dark text colour `#1E293B`, giving at least 9:1 text contrast on entries 0–9 and at least 7:1 on entries 10–31 (WCAG AAA). Red is deliberately absent; it is reserved for over-capacity and Today markers. Any palette name may be used in `color:` of a project or a product.
 
 | Index | Name | Fill | Accent (border) |
 | --- | --- | --- | --- |
@@ -353,6 +383,28 @@ Soft fills with a strong left accent and one dark text colour `#1E293B`, giving 
 | 7 | teal | `#99F6E4` | `#14B8A6` |
 | 8 | lime | `#D9F99D` | `#65A30D` |
 | 9 | sand | `#EADBC8` | `#A16207` |
+| 10 | blue | `#BFDBFE` | `#3B82F6` |
+| 11 | cyan | `#A5F3FC` | `#06B6D4` |
+| 12 | emerald | `#A7F3D0` | `#10B981` |
+| 13 | yellow | `#FEF08A` | `#CA8A04` |
+| 14 | fuchsia | `#F5D0FE` | `#D946EF` |
+| 15 | purple | `#E9D5FF` | `#A855F7` |
+| 16 | stone | `#E7E5E4` | `#78716C` |
+| 17 | sand-deep | `#D6C3A5` | `#854D0E` |
+| 18 | indigo-deep | `#A5B4FC` | `#4F46E5` |
+| 19 | green-deep | `#86EFAC` | `#16A34A` |
+| 20 | orange-deep | `#FDBA74` | `#EA580C` |
+| 21 | pink-deep | `#F9A8D4` | `#DB2777` |
+| 22 | sky-deep | `#7DD3FC` | `#0284C7` |
+| 23 | amber-deep | `#FCD34D` | `#B45309` |
+| 24 | violet-deep | `#C4B5FD` | `#7C3AED` |
+| 25 | teal-deep | `#5EEAD4` | `#0D9488` |
+| 26 | lime-deep | `#BEF264` | `#4D7C0F` |
+| 27 | blue-deep | `#93C5FD` | `#2563EB` |
+| 28 | cyan-deep | `#67E8F9` | `#0891B2` |
+| 29 | emerald-deep | `#6EE7B7` | `#059669` |
+| 30 | fuchsia-deep | `#F0ABFC` | `#C026D3` |
+| 31 | purple-deep | `#D8B4FE` | `#9333EA` |
 
 For a custom hex colour, the accent is the same hue darkened by 35 % in HSL lightness, and text is `#1E293B` if its contrast is ≥ 4.5:1, else `#FFFFFF`.
 
@@ -484,10 +536,11 @@ Shell note for Windows: cmd.exe and PowerShell 7.4+ pass bytes through pipes unc
   - first line `# Generated by rt convert from <CSV file name>. Edit freely.` — the name without directories, or `<stdin>`; no date, so output is reproducible;
   - with a base, the base text follows, comments and key order kept, indentation normalised as below; its `projects` list replaced;
   - mappings indented 2 spaces, list items written ` -  ` indented 2 spaces under their key (as in all examples); no line wrapping; UTF-8, LF; Polish letters written as-is;
-  - project keys in the order `id, name, team, start, size, ongoing, depends_on, description, color`, absent ones omitted; `team` is always the team id; `depends_on` is a flow list `[a, b]`;
+  - project keys in the order `id, name, team, product, start, size, ongoing, depends_on, description, color`, absent ones omitted; `team` and `product` are always ids; `depends_on` is a flow list `[a, b]`;
   - scalars are written plain unless a YAML reader would take them for another type or for YAML syntax, in which case they are quoted.
 - **CV-19 Determinism.** The same CSV bytes, base file and options give byte-identical YAML, so re-running convert on unchanged input shows no diff in version control.
 - **CV-20 Equivalence.** `rt convert x.csv | rt render -o a.html` produces the same HTML as converting to a file and rendering that file.
+- **CV-21 Product resolution.** With `--base`, a `product` cell matches a product id of the base's `products` exactly, else a product name exactly (after NFC); otherwise error E038 with a case-insensitive suggestion over ids and names. An empty cell leaves the project standalone. Without `--base` the column is ignored with warning W020, since the skeleton creates no products.
 
 **Worked example.** With the CSV from section 3.4 and the fixture `teams.base.yaml` (two teams: `blik` "BLIK i przelewy", `app` "Aplikacja mobilna"):
 
@@ -549,7 +602,7 @@ The output is one static HTML5 file that opens offline in any current browser an
 ### 7.2 Page structure (top to bottom)
 
 1. **Header** — title (h1), subtitle, horizon ("Jan 2027 – Dec 2027"), "As of 23 Oct 2026".
-2. **Legend** — size chips in declaration order (`S 2w`, `M 4w`…), then the symbols for ongoing, delayed, dependency, clipped, over capacity, quarter line and Today.
+2. **Legend** — size chips in declaration order (`S 2w`, `M 4w`…), then the symbols for ongoing, delayed, dependency, clipped, over capacity, quarter line and Today, then — only when the file has products — a "Products" row: one chip per product in file order with its colour, name, owning domain and owner (`BLIK · Kanały płatności · Anna Kowalska`).
 3. **Summary** — only with `--summary` (section 7.12).
 4. **Timeline header** — sticky to the top while scrolling: a year row, a quarter row (`Q1`…`Q4`) and a month row (`Jan`…`Dec`).
 5. **Subdomain sections** — one per subdomain in file order (h2), each holding its team swimlanes (h3) in file order.
@@ -583,7 +636,7 @@ The wireframe uses the worked example: delayed bars show a dashed lead line from
 
 - **OUT-16** Rounded rectangle (radius 6 px), palette fill, 4 px left border in the accent colour, text `#1E293B` 12.5 px weight 500.
 - **OUT-17** Content by drawn width: ≥ 120 px → name (ellipsis) plus a right-aligned chip `M · 4w`; 48–119 px → name only; < 48 px → no text.
-- **OUT-18** Every bar has a `title` tooltip and `aria-label` with: name; team; size and weeks or "Ongoing"; requested start; actual start; last day (`end − 1`); delay; description. Dates display as `29 Jan 2027`. A styled CSS tooltip on hover and keyboard focus SHOULD be added; bars have `tabindex="0"`.
+- **OUT-18** Every bar has a `title` tooltip and `aria-label` with: name; team; for product projects a line `Product: BLIK · owned by Kanały płatności (Anna Kowalska)` (the owner in brackets only when given); size and weeks or "Ongoing"; requested start; actual start; last day (`end − 1`); delay; description. Dates display as `29 Jan 2027`. A styled CSS tooltip on hover and keyboard focus SHOULD be added; bars have `tabindex="0"`.
 - **OUT-19** **Ongoing**: square right end, a light diagonal stripe overlay, a fade over the last 48 px, and an `∞` glyph inside the right edge.
 - **OUT-20** **Delayed**: a pill `+4w` after the name, and a dashed 1 px accent line running 3 px below the bar's bottom edge (in the gap between bar and lane edge, so it never crosses another bar) from `x(requested start)` to the bar, starting with a 5 px hollow circle. Delay label: `+Nd` when under 14 days, else `+Nw` with N = days ÷ 7 rounded half up.
 - **OUT-21** **Clipped**: the clipped edge is square and shows a chevron (`‹` left, `›` right).
@@ -628,7 +681,7 @@ These class names and attributes are a contract; tests and future tooling rely o
 | Subdomain card | `rt-subdomain` | `data-subdomain` (id) |
 | Team block | `rt-team` | `data-team`, `data-slots`, `data-utilization` (4 decimals) |
 | Lane | `rt-lane` | `data-team`, `data-lane` (1-based), `data-overflow` (`true`/`false`) |
-| Bar | `rt-bar` | `data-seq` (1-based file order), `data-team`, `data-lane`, `data-requested` (or `auto`), `data-start`, `data-end` (exclusive, or `ongoing`), `data-delay-days`, `data-delay-reason`, `data-depends-on` (space-separated seq numbers), `data-color-index`, `data-flags` (space-separated, alphabetical) |
+| Bar | `rt-bar` | `data-seq` (1-based file order), `data-team`, `data-product` (product id, empty for standalone), `data-lane`, `data-requested` (or `auto`), `data-start`, `data-end` (exclusive, or `ongoing`), `data-delay-days`, `data-delay-reason`, `data-depends-on` (space-separated seq numbers), `data-color-index`, `data-flags` (space-separated, alphabetical) |
 | Dependency connector | `rt-dep` | `data-from`, `data-to` (seq numbers) |
 | Quarter label | `rt-quarter` | `data-quarter` (`2027-Q2`) |
 | Quarter line | `rt-quarter-line` | `data-date` (`2027-04-01`) |
@@ -636,6 +689,7 @@ These class names and attributes are a contract; tests and future tooling rely o
 | Summary section | `rt-summary` | — |
 | Load cell | `rt-load-cell` | `data-row` (team id, subdomain id, or `all`), `data-kind` (`team`, `subdomain`, `all`), `data-month` (`2027-02`), `data-load` (4 decimals) |
 | Warning item | `rt-warning` | `data-code` |
+| Product chip (legend) | `rt-product` | `data-product` (id), `data-color-index` (empty for a custom hex colour) |
 
 ### 7.11 Accessibility
 
@@ -679,6 +733,7 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
 - **PL-4** `flags` values: `auto_start`, `clipped_left`, `clipped_right`, `continues`, `delayed`, `hidden`, `over_capacity`; sorted alphabetically. `delay_reason`: `dependency`, `capacity`, `dependency+capacity` or `null`. `neighbors` = `seq` numbers of adjacent bars (CO-3), ascending.
 - **PL-5** `utilization` and every `monthly_load` value are numbers rounded to 4 decimals.
 - **PL-6** `monthly_load` is always present (independent of `--summary`): `months`, then per-team, per-subdomain and `total` arrays aligned with `months` (OUT-32).
+- **PL-7** Each project has `product` (product id or `null`) right after `team`. A top-level `products` list follows `teams`, in file order (empty when the file has none): `{ "id", "name", "domain", "owner", "color_index", "color_name", "color_fill", "projects" }`, with `owner` `null` when not given, `color_index` and `color_name` `null` for a custom hex colour, and `projects` the `seq` numbers of its projects (hidden ones included), ascending.
 
 ```json
 {
@@ -691,9 +746,10 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
   "teams": [
     { "id": "alpha", "subdomain": "core", "slots": 2, "overflow_lanes": 0, "utilization": 0.7624 }
   ],
+  "products": [],
   "projects": [
     {
-      "seq": 3, "id": null, "name": "Reporting", "team": "alpha", "size": "M", "weeks": 4, "ongoing": false,
+      "seq": 3, "id": null, "name": "Reporting", "team": "alpha", "product": null, "size": "M", "weeks": 4, "ongoing": false,
       "requested_start": "2027-01-01", "depends_on": [], "earliest_start": "2027-01-01",
       "start": "2027-01-29", "end": "2027-02-26", "last_day": "2027-02-25",
       "lane": 2, "overflow": false, "delay_days": 28, "delay_reason": "capacity",
@@ -714,13 +770,13 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
 }
 ```
 
-The complete expected plans are the companion files `scheduling-worked-example.expected.json` (excerpt above) and `dependencies-example.expected.json`. W001 messages end with the reason: "no free slot in team …", "waiting for dependencies", or "waiting for dependencies, then no free slot in team …".
+The complete expected plans are the companion files `scheduling-worked-example.expected.json` (excerpt above), `dependencies-example.expected.json` and `products-example.expected.json`, whose products entry reads `{ "id": "blik", "name": "BLIK", "domain": "channels", "owner": "Anna Kowalska", "color_index": 10, "color_name": "blue", "color_fill": "#BFDBFE", "projects": [1, 3, 5] }`. W001 messages end with the reason: "no free slot in team …", "waiting for dependencies", or "waiting for dependencies, then no free slot in team …".
 
 ## 9. Errors and warnings
 
 Errors stop output (exit 1 or 3); warnings are reported and output is still written unless `--strict` is set. Codes are stable across versions; message wording may improve.
 
-Location rule: a diagnostic points to the offending node; project-level diagnostics (W001–W004, W011, E060, E061) point to the first key of that project's mapping.
+Location rule: a diagnostic points to the offending node; project-level diagnostics (W001–W004, W011, E060, E061) point to the first key of that project's mapping, product-level warnings (W013, W014) to the first key of that product's mapping. E002, E010–E012 and E033 apply to product fields as to other entities.
 
 ### 9.1 Errors
 
@@ -738,6 +794,8 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 | E021 | Duplicate team id (file-wide) | `team id "blik" already defined at line 18` |
 | E022 | Duplicate project name within a team | `project "Maintenance" already exists in team "blik" (line 40)` |
 | E023 | Duplicate project id | `project id "api-v2" already defined at line 31` |
+| E024 | Duplicate product id | `product id "blik" already defined at line 31` |
+| E025 | Duplicate product name | `product name "BLIK" already used at line 31` |
 | E030 | Unknown team reference | `project "Card tokens" references unknown team "blik2" (did you mean "blik"?)` |
 | E031 | Unknown size | `project "Card tokens" uses size "XXL", not defined in sizes (S, M, L, XL)` |
 | E032 | Both or neither of `size` / `ongoing: true` | `project "Card tokens" needs exactly one of size or ongoing: true` |
@@ -746,6 +804,8 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 | E035 | Ambiguous dependency name | `"Maintenance" matches 2 projects (lines 40, 77); give one an id and use it` |
 | E036 | Dependency on an ongoing project | `project "Audit" cannot depend on ongoing project "Ops maintenance"` |
 | E037 | Dependency on itself or on a later project | `project "Web checkout" depends on "API v2", which appears later (line 52); move "API v2" above it` |
+| E038 | Unknown product reference (YAML, or a CSV `product` cell with `--base`) | `project "BLIK w aplikacji" references unknown product "blk" (did you mean "blik"?)` |
+| E039 | Product domain is not a subdomain id | `product "BLIK" references unknown domain "chanels" (did you mean "channels"?)` |
 | E040 | Horizon end before start | `horizon end 2027-01 is before start 2027-06` |
 | E041 | Explicit horizon longer than 120 months | `horizon spans 144 months; maximum is 120` |
 | E042 | `sizes` empty | `sizes must define at least one size` |
@@ -772,11 +832,13 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 | W006 | Subdomain has no teams | `subdomain "risk" has no teams` |
 | W007 | Palette exhausted | `project "X" shares colour "teal" with an adjacent bar` |
 | W008 | Team has 0 people | `team "ghost" has no members in capacity` |
-| W009 | Pinned colours collide | `projects "A" and "B" are adjacent and both pinned to "sky"` |
+| W009 | Pre-coloured bars collide: two adjacent bars, each pinned or coloured by a product, not both of the same product, share a colour | `projects "A" and "B" are adjacent and both pinned to "sky"` (`… both coloured "teal"` when a product colour is involved) |
 | W010 | No projects | `no projects defined; rendering empty roadmap` |
 | W011 | Over capacity (overflow mode) | `project "X" exceeds team "alpha" capacity; placed in overflow lane +1` |
 | W012 | Auto horizon capped | `automatic horizon capped at 120 months (2027-01 to 2036-12)` |
-| W020 | CSV column not used and ignored, or subdomain column with --base | `column "Właściciel" is not used and was ignored` |
+| W013 | Product has no projects | `product "Karty" has no projects` |
+| W014 | More products than palette colours; some share | `products "A" and "B" share colour "teal" (more than 32 products)` |
+| W020 | CSV column not used and ignored, subdomain column with --base, or product column without --base | `column "Właściciel" is not used and was ignored` |
 | W021 | Day of a CSV start date dropped (only the month is kept) | `day of "2027-03-15" ignored; using 2027-03 [column "Start"]` |
 
 ## 10. Non-functional requirements
@@ -798,7 +860,7 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 
 ## 11. Acceptance tests
 
-The tool is accepted when all 55 scenarios below pass. "DE" = dependencies-example.yaml; CSV fixtures are in section 13.2. "WE" = `scheduling-worked-example.yaml`, "EX" = `roadmap.example.yaml`; all runs use `--today` or the file's `today` so results are reproducible.
+The tool is accepted when all 65 scenarios below pass. "DE" = dependencies-example.yaml; CSV fixtures are in section 13.2. "WE" = `scheduling-worked-example.yaml`, "EX" = `roadmap.example.yaml`, "PE" = `products-example.yaml`; all runs use `--today` or the file's `today` so results are reproducible.
 
 ### 11.1 Scheduling and colour
 
@@ -885,6 +947,21 @@ The tool is accepted when all 55 scenarios below pass. "DE" = dependencies-examp
 | AT-54 | CSV without a team column with `--base teams.base.yaml`; then with `--team app`; then with `--team "Aplikacja mobilna" --append` and a base holding one project | E105 for every row; every project `team: app`; the base project first, then the CSV rows |
 | AT-55 | `cat projects.minimal.csv \| rt convert`, run twice | Exit 0; both outputs identical, and equal to `projects.minimal.expected.yaml` except that the first line names `<stdin>` |
 
+### 11.7 Products
+
+| ID | Given / When | Then |
+| --- | --- | --- |
+| AT-56 | `rt render PE --plan p.json`: two products, one with projects in teams of two subdomains | Every bar of a product has the product's `data-color-index`; plan `products[*].projects` lists their seqs; the plan equals `products-example.expected.json` (ignoring `rt_version`) |
+| AT-57 | Same, one product project with its own `color: sky` | That bar is sky (index 4); the product's other bars keep the product colour |
+| AT-58 | Same | Standalone bars use indices 0–9 only and none shares a colour with an adjacent bar of any product |
+| AT-59 | WE and DE (no products) | Plans equal the updated expected files: every colour unchanged, `product: null`, `products: []` |
+| AT-60 | Unknown product, duplicate product id and name, unknown domain | Exit 1; E038 and E039 with "did you mean", E024, E025, all positioned |
+| AT-61 | A product with no projects | W013 |
+| AT-62 | 34 products without pins, each with a project | 32 distinct product colours; W014 for the two products that share |
+| AT-63 | Render PE | Legend has one `rt-product` chip per product in file order; tooltips show `Product: … · owned by …` |
+| AT-64 | CSV with a `product` column, `--base` holding products | `product:` written as the id (a name resolves too); unknown value → E038; without `--base` → W020 |
+| AT-65 | `rt schema` | The schema accepts `products` and `project.product`, and still validates every fixture |
+
 ## 12. Assumptions and open questions
 
 All seven questions from the first review and the two requirements added on 24 Oct 2026 (command chaining, CSV import) are built into this version; the team-to-subdomain assumption (A1) still awaits confirmation.
@@ -902,6 +979,7 @@ All seven questions from the first review and the two requirements added on 24 O
 | Polish? | For project names (and other user text); page labels stay English | IN-8, OUT-27, AT-36 |
 | Command chaining (24 Oct)? | Yes: every command reads stdin and writes stdout; one artifact per stream; nothing on stdout after a failure; exit 141 on a closed pipe | 6.5, CLI-2, AT-37 to AT-46 |
 | CSV project list (24 Oct)? | Yes, through a conversion command rt convert (CSV → YAML) rather than CSV input to render; required columns name and size; optional base file for teams and settings | 3.4, 6.6, AT-47 to AT-55 |
+| Products (CR-1, 29 Oct)? | Yes: optional `products`, each owned by one domain; a product is delivered through ordinary projects (one team per project, any subdomain); its bars share one colour from a 32-colour palette; a project pin wins over the product colour | 3.2, 5.2, 5.3, 7.2, 8, AT-56 to AT-65 |
 
 ### 12.2 Assumptions
 
@@ -912,7 +990,7 @@ All seven questions from the first review and the two requirements added on 24 O
 | A3 | A delayed or dependent project may start mid-month | Add a snap-to-month option |
 | A4 | A week is 7 calendar days; no holidays or working-day calendar | Add a calendar block |
 | A5 | Default conflict handling is `delay`, not `overflow` | Change one default |
-| A6 | Colour only separates neighbours; it carries no meaning | Add `color_by` (theme, priority…) |
+| A6 | Colour separates neighbours and identifies products; it carries no other meaning | Add `color_by` (theme, priority…) |
 | A7 | A project keeps one slot for its whole duration and never spans teams | Needed for shared projects |
 | A8 | Dependencies are finish-to-start with no lag and must point to earlier projects in the file | Add a lag (`+2w`) or topological ordering |
 | A9 | The auto-start anchor is the horizon start if given, else the current month | Add an explicit `scheduling.anchor` |
@@ -944,16 +1022,19 @@ Delivered alongside this document and stored in the project.
 
 | File | Purpose | Used in |
 | --- | --- | --- |
-| `roadmap.example.yaml` | Realistic, fully commented example: 4 subdomains, 7 teams, every feature incl. dependencies, auto-start and Polish names | Users, `rt init`, AT-10, AT-17, AT-24, AT-33, AT-36 |
+| `roadmap.example.yaml` | Realistic, fully commented example: 4 subdomains, 7 teams, every feature incl. dependencies, auto-start, products and Polish names | Users, `rt init`, AT-10, AT-17, AT-24, AT-33, AT-36 |
 | `roadmap.minimal.yaml` | Smallest valid file | `rt init --minimal`, smoke tests |
 | `scheduling-worked-example.yaml` | Input of the worked example (section 4.4) | AT-01 to AT-08, AT-12, AT-13, AT-33 to AT-35 |
-| `scheduling-worked-example.expected.json` | Expected plan for the worked example | AT-01 |
+| `scheduling-worked-example.expected.json` | Expected plan for the worked example | AT-01, AT-59 |
 | `dependencies-example.yaml` | Input of the dependency example (section 4.5) | AT-26 to AT-31 |
-| `dependencies-example.expected.json` | Expected plan for the dependency example | AT-26 |
-| `roadmap.schema.json` | JSON Schema (draft 2020-12) of the input format | Editor support, `rt schema`, schema-level validation |
+| `dependencies-example.expected.json` | Expected plan for the dependency example | AT-26, AT-59 |
+| `products-example.yaml` | Input of the products example: two products, one spanning two subdomains, one project pinned over its product's colour | AT-56 to AT-58, AT-63 |
+| `products-example.expected.json` | Expected plan for the products example | AT-56 |
+| `roadmap.schema.json` | JSON Schema (draft 2020-12) of the input format | Editor support, `rt schema`, schema-level validation, AT-65 |
 | `convert/projects.minimal.csv` | Smallest CSV: columns name and size only | AT-47, AT-55 |
 | `convert/projects.minimal.expected.yaml` | Expected skeleton output for the minimal CSV | AT-47, AT-55 |
 | `convert/projects.pl.csv` | Polish Excel-style export: semicolons, BOM, CRLF, Polish headers, quoted delimiter, ignored column | AT-48 to AT-50 |
 | `convert/teams.base.yaml` | Base file with settings, sizes, two teams and comments | AT-48 to AT-50, AT-54 |
 | `convert/projects.pl.expected.yaml` | Expected output of the base-mode conversion | AT-48 to AT-50 |
+| `reference/reference_plan.py` | Oracle that produced the three expected plan files (test tooling only) | Golden and differential plan tests |
 | `reference/reference_convert.py` | Oracle that produced both expected YAML files (test tooling only) | Differential tests for convert |

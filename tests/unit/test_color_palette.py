@@ -7,9 +7,12 @@ from fractions import Fraction
 import pytest
 
 from rt.color.palette import (
+    BASE,
     DARK_TEXT,
     LIGHT_TEXT,
     PALETTE,
+    PRODUCT_ORDER,
+    PaletteEntry,
     by_name,
     contrast_ratio,
     custom_color,
@@ -42,15 +45,43 @@ def test_palette_table() -> None:
         "teal",
         "lime",
         "sand",
+        "blue",
+        "cyan",
+        "emerald",
+        "yellow",
+        "fuchsia",
+        "purple",
+        "stone",
+        "sand-deep",
+        "indigo-deep",
+        "green-deep",
+        "orange-deep",
+        "pink-deep",
+        "sky-deep",
+        "amber-deep",
+        "violet-deep",
+        "teal-deep",
+        "lime-deep",
+        "blue-deep",
+        "cyan-deep",
+        "emerald-deep",
+        "fuchsia-deep",
+        "purple-deep",
     ]
+    assert [e.index for e in PALETTE] == list(range(32))
+    assert PALETTE[31] == PaletteEntry(31, "purple-deep", "#D8B4FE", "#9333EA")
+    assert tuple(range(10)) == BASE
+    assert (*range(10, 32), *range(10)) == PRODUCT_ORDER
     assert palette_ref(4) == ColorRef(4, "sky", "#BAE6FD", "#0EA5E9", DARK_TEXT)
     assert by_name("teal") is PALETTE[7] and by_name("red") is None
 
 
-def test_palette_text_contrast_at_least_9() -> None:
+def test_palette_text_contrast() -> None:
+    """RS 5.3: entries 0–9 at least 9:1, entries 10–31 at least 7:1 (WCAG AAA); red is absent."""
     for e in PALETTE:
-        assert contrast_ratio(DARK_TEXT, e.fill) >= 9
+        assert contrast_ratio(DARK_TEXT, e.fill) >= (9 if e.index < 10 else 7), e.name
         assert text_color(e.fill) == DARK_TEXT
+        assert "red" not in e.name
 
 
 def test_spec_key_mapping() -> None:

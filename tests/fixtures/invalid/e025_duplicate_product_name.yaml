@@ -1,0 +1,36 @@
+# expect: E025 at 24:11
+version: 1
+roadmap:
+  title: Catalogue
+  horizon: { start: 2027-01, end: 2027-06 }
+  today: 2027-01-15
+sizes:
+  S: 2
+  M: 4
+  L: 8
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - id: blik
+        name: BLIK
+        parallel_projects: 1
+        capacity: { developers: 2 }
+products:
+  - id: cards
+    name: Cards
+    domain: core
+  - id: cards-2
+    name: Cards
+    domain: core
+projects:
+  - name: Base project
+    team: blik
+    product: cards
+    size: S
+    start: 2027-01
+  - name: Second project
+    team: blik
+    product: cards-2
+    size: S
+    start: 2027-02

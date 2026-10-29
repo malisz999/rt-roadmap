@@ -28,6 +28,7 @@ strong { font-weight: 600; color: var(--text) }
 .rt-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
 .rt-legend__title { color: var(--text); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase }
 .rt-legend__size { padding: 1px 8px; border-radius: 6px; background: var(--chip) }
+.rt-product { padding: 1px 8px 1px 6px; border-left: 4px solid var(--accent); border-radius: 6px; background: var(--fill); color: var(--ink); white-space: nowrap }
 .rt-sym { position: relative; display: inline-block; width: 30px; height: 16px; border-radius: 2px; color: var(--ink); font-size: 12px; line-height: 16px; text-align: center; font-weight: 700 }
 .rt-sym--ongoing { border-left: 3px solid #6366F1; background: #C7D2FE repeating-linear-gradient(135deg, #FFFFFF73 0 4px, transparent 4px 8px); text-align: right; padding-right: 2px }
 .rt-sym--delayed { height: 0; border-top: 1px dashed; color: var(--muted) }

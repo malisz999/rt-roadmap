@@ -1,4 +1,4 @@
-"""Cross-reference checks: E020–E023, E030, E031, E034–E037; resolves depends_on to seq numbers (ADS 4.2).
+"""Cross-reference checks: E020–E025, E030, E031, E034–E039; resolves depends_on to seq numbers (ADS 4.2).
 
 Names and ids are compared with `==`: the loader (or rt convert) has already NFC-normalised every string
 (RS IN-8, ADR-8). Checks that need a field which failed validation are skipped (ADS 8.2).
@@ -38,6 +38,22 @@ def _check_unique(model: Model, diags: Collector) -> None:
             diags.report(Code.E021, pos, id=t.id, line=first_team[t.id].line)
         else:
             first_team[t.id] = pos
+
+    first_product: dict[str, Pos] = {}
+    first_product_name: dict[str, Pos] = {}
+    for pr in model.products:
+        pos = pr.field_pos.get("id", pr.pos)
+        if pr.id in first_product:
+            diags.report(Code.E024, pos, id=pr.id, line=first_product[pr.id].line)
+        else:
+            first_product[pr.id] = pos
+        if "name" not in pr.field_pos:
+            continue  # missing or invalid name: already reported
+        pos = pr.field_pos["name"]
+        if pr.name in first_product_name:
+            diags.report(Code.E025, pos, name=pr.name, line=first_product_name[pr.name].line)
+        else:
+            first_product_name[pr.name] = pos
 
     first_id: dict[str, Pos] = {}
     first_name: dict[tuple[str, str], Project] = {}
@@ -86,6 +102,33 @@ def _check_team_and_size(model: Model, diags: Collector) -> None:
                 project=_label(p),
                 size=p.size,
                 sizes=", ".join(labels) or "none",
+            )
+
+
+def _check_products(model: Model, diags: Collector) -> None:
+    """E039: a product's domain is not a subdomain id; E038: a project names an unknown product."""
+    subdomain_ids = [s.id for s in model.subdomains if s.id]
+    known_subdomains = set(subdomain_ids)
+    for pr in model.products:
+        if pr.domain_id and pr.domain_id not in known_subdomains:
+            diags.report(
+                Code.E039,
+                pr.field_pos.get("domain", pr.pos),
+                product=pr.name,
+                domain=pr.domain_id,
+                hint=suggest(pr.domain_id, subdomain_ids),
+            )
+    product_ids = [pr.id for pr in model.products]
+    known_products = set(product_ids)
+    for p in model.projects:
+        if p.product_id is not None and p.product_id not in known_products:
+            diags.report(
+                Code.E038,
+                _pos(p, "product"),
+                column=p.field_column.get("product"),
+                project=_label(p),
+                product=p.product_id,
+                hint=suggest(p.product_id, product_ids),
             )
 
 
@@ -150,8 +193,9 @@ def check_references(model: Model, diags: Collector) -> ResolvedModel | None:
     """Run every check that the usable fields allow; return None if the collector holds any error afterwards."""
     _check_unique(model, diags)
     _check_team_and_size(model, diags)
+    _check_products(model, diags)
     deps = _resolve_dependencies(model, diags)
-    if diags.has_errors() or any(p.incomplete for p in model.projects):
+    if diags.has_errors() or any(p.incomplete for p in model.projects) or any(p.incomplete for p in model.products):
         return None
     weeks: dict[int, int | None] = {}
     for p in model.projects:

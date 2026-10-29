@@ -63,3 +63,13 @@ Validation catalogue: `tests/cli/test_catalogue_invalid.py` runs every `tests/fi
 | AT-53 | E107; E031; exit 2 (usage) | `acceptance/test_at_convert.py`, `unit/test_convert_command.py` | `test_at_53_skeleton_errors`, `test_at_53_custom_sizes_written`, `test_at_53_e107_e031_and_usage` |
 | AT-54 | E105 for every row; every project team: app; the base project first… | `acceptance/test_at_convert.py`, `unit/test_convert_command.py` | `test_at_54_team_resolution_with_base`, `test_at_54_single_team_base`, `test_at_54_team_from_base_option_or_e105` |
 | AT-55 | Exit 0; both outputs identical, and equal to projects.minimal.expec… | `acceptance/test_at_convert.py`, `unit/test_convert_command.py` | `test_at_55_stdin_twice`, `test_at_55_stdin_twice` |
+| AT-56 | Every bar of a product has the product's data-color-index; plan pro… | `acceptance/test_at_products.py` | `test_at_56_product_bars_share_the_product_colour`, `test_at_56_products_plan_is_golden` |
+| AT-57 | That bar is sky (index 4); the product's other bars keep the produc… | `acceptance/test_at_products.py` | `test_at_57_project_pin_wins_over_product_colour` |
+| AT-58 | Standalone bars use indices 0–9 only and none shares a colour with … | `acceptance/test_at_products.py` | `test_at_58_standalone_bars_avoid_product_colours` |
+| AT-59 | Plans equal the updated expected files: every colour unchanged, pro… | `acceptance/test_at_products.py` | `test_at_59_files_without_products_keep_their_colours`, `test_at_59_colours_equal_the_reference_colours` |
+| AT-60 | Exit 1; E038 and E039 with "did you mean", E024, E025, all position… | `acceptance/test_at_products.py` | `test_at_60_product_reference_errors` |
+| AT-61 | W013 | `acceptance/test_at_products.py` | `test_at_61_product_without_projects` |
+| AT-62 | 32 distinct product colours; W014 for the two products that share | `acceptance/test_at_products.py` | `test_at_62_more_products_than_colours` |
+| AT-63 | Legend has one rt-product chip per product in file order; tooltips … | `acceptance/test_at_products.py` | `test_at_63_legend_and_tooltips` |
+| AT-64 | product: written as the id (a name resolves too); unknown value → E… | `acceptance/test_at_products.py` | `test_at_64_convert_product_column` |
+| AT-65 | The schema accepts products and project.product, and still validate… | `acceptance/test_at_products.py` | `test_at_65_schema_accepts_products` |

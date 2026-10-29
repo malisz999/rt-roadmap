@@ -13,7 +13,7 @@ roadmap/
 │   └── dev_test_loop.py          Orchestrator: runs developer <-> tester rounds per milestone (M1–M8)
 └── docs/
     ├── README.md                 This file
-    ├── requirements.md           Requirements specification (RS): what rt must do, AT-01…AT-55
+    ├── requirements.md           Requirements specification (RS): what rt must do, AT-01…AT-65
     ├── architecture.md           Architecture and design spec (ADS): stack, modules, milestones M1–M8
     ├── images/                   Diagrams referenced by the two specs
     │   ├── page-layout.svg               RS 7.2: page layout, worked example drawn to scale
@@ -26,6 +26,8 @@ roadmap/
     │   ├── scheduling-worked-example.expected.json Expected plan for WE
     │   ├── dependencies-example.yaml               "DE" fixture: dependencies, auto start (RS 4.5)
     │   ├── dependencies-example.expected.json      Expected plan for DE
+    │   ├── products-example.yaml                   "PE" fixture: products and their colours (RS 5.2)
+    │   ├── products-example.expected.json          Expected plan for PE
     │   └── convert/              Fixtures for `rt convert` (CSV -> YAML)
     │       ├── projects.minimal.csv              Two-column CSV, no base file
     │       ├── projects.minimal.expected.yaml    Expected output of the above
@@ -44,6 +46,7 @@ Requires `ruamel.yaml` (0.19.x). Run from the repository root:
 ```
 python docs/reference/reference_plan.py docs/fixtures/scheduling-worked-example.yaml
 python docs/reference/reference_plan.py docs/fixtures/dependencies-example.yaml
+python docs/reference/reference_plan.py docs/fixtures/products-example.yaml
 python docs/reference/reference_convert.py docs/fixtures/convert/projects.minimal.csv
 python docs/reference/reference_convert.py docs/fixtures/convert/projects.pl.csv \
     --base docs/fixtures/convert/teams.base.yaml \

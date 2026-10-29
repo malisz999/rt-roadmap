@@ -23,10 +23,11 @@ FILES = sorted(INVALID.glob("*.yaml"))
 ITEM = re.compile(r"^(?P<code>[EW]\d{3})(?: at (?P<line>\d+):(?P<col>\d+))?$")
 
 RS_CODES_FOR_YAML = (
-    ["E001", "E002", "E003", "E004", "E010", "E011", "E012", "E013", "E020", "E021", "E022", "E023"]
-    + [f"E03{i}" for i in range(8)]
+    ["E001", "E002", "E003", "E004", "E010", "E011", "E012", "E013"]
+    + [f"E02{i}" for i in range(6)]
+    + [f"E03{i}" for i in range(10)]
     + ["E040", "E041", "E042", "E043", "E060", "E061"]
-    + [f"W{i:03d}" for i in range(1, 13)]
+    + [f"W{i:03d}" for i in range(1, 15)]
 )
 
 

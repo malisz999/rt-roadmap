@@ -15,19 +15,54 @@ ID_RULE = 'lower-case letters, digits, "-" or "_", starting with a letter or dig
 SIZE_LABEL_RULE = 'letters, digits or "+", 1–8 characters'
 
 # Palette names in palette order (RS 5.3); colour values live in rt.color.
-PALETTE_NAMES: tuple[str, ...] = ("indigo", "green", "orange", "pink", "sky", "amber", "violet", "teal", "lime", "sand")
+PALETTE_NAMES: tuple[str, ...] = (
+    "indigo",
+    "green",
+    "orange",
+    "pink",
+    "sky",
+    "amber",
+    "violet",
+    "teal",
+    "lime",
+    "sand",
+    "blue",
+    "cyan",
+    "emerald",
+    "yellow",
+    "fuchsia",
+    "purple",
+    "stone",
+    "sand-deep",
+    "indigo-deep",
+    "green-deep",
+    "orange-deep",
+    "pink-deep",
+    "sky-deep",
+    "amber-deep",
+    "violet-deep",
+    "teal-deep",
+    "lime-deep",
+    "blue-deep",
+    "cyan-deep",
+    "emerald-deep",
+    "fuchsia-deep",
+    "purple-deep",
+)
 
-TOP_KEYS: tuple[str, ...] = ("version", "roadmap", "sizes", "scheduling", "subdomains", "projects")
+TOP_KEYS: tuple[str, ...] = ("version", "roadmap", "sizes", "scheduling", "subdomains", "products", "projects")
 ROADMAP_KEYS: tuple[str, ...] = ("title", "subtitle", "horizon", "today", "month_width", "content_language")
 HORIZON_KEYS: tuple[str, ...] = ("start", "end")
 SCHEDULING_KEYS: tuple[str, ...] = ("on_conflict", "adjacency_gap_days")
 SUBDOMAIN_KEYS: tuple[str, ...] = ("id", "name", "description", "teams")
 TEAM_KEYS: tuple[str, ...] = ("id", "name", "parallel_projects", "capacity")
 CAPACITY_KEYS: tuple[str, ...] = ("developers", "product_managers", "analysts", "testers")
+PRODUCT_KEYS: tuple[str, ...] = ("id", "name", "domain", "owner", "description", "color")
 PROJECT_KEYS: tuple[str, ...] = (
     "id",
     "name",
     "team",
+    "product",
     "start",
     "size",
     "ongoing",
@@ -44,6 +79,9 @@ SUBDOMAIN_DESCRIPTION_LEN = (0, 300)
 TEAM_NAME_LEN = (1, 60)
 PROJECT_NAME_LEN = (1, 100)
 PROJECT_DESCRIPTION_LEN = (0, 500)
+PRODUCT_NAME_LEN = (1, 100)
+PRODUCT_OWNER_LEN = (0, 100)
+PRODUCT_DESCRIPTION_LEN = (0, 500)
 MONTH_WIDTH = (60, 400)
 DEFAULT_MONTH_WIDTH = 120
 SLOTS = (1, 12)

@@ -1,0 +1,469 @@
+{
+  "rt_version": "1.0.0",
+  "format": 1,
+  "title": "Products example",
+  "today": "2027-02-15",
+  "horizon": {
+    "start": "2027-01",
+    "end": "2027-06",
+    "start_date": "2027-01-01",
+    "end_exclusive": "2027-07-01",
+    "days": 181
+  },
+  "on_conflict": "delay",
+  "teams": [
+    {
+      "id": "blik",
+      "subdomain": "channels",
+      "slots": 2,
+      "overflow_lanes": 0,
+      "utilization": 0.3094
+    },
+    {
+      "id": "app",
+      "subdomain": "channels",
+      "slots": 1,
+      "overflow_lanes": 0,
+      "utilization": 0.232
+    },
+    {
+      "id": "portal",
+      "subdomain": "merchant",
+      "slots": 2,
+      "overflow_lanes": 0,
+      "utilization": 0.4834
+    }
+  ],
+  "products": [
+    {
+      "id": "blik",
+      "name": "BLIK",
+      "domain": "channels",
+      "owner": "Anna Kowalska",
+      "color_index": 10,
+      "color_name": "blue",
+      "color_fill": "#BFDBFE",
+      "projects": [
+        1,
+        3,
+        5
+      ]
+    },
+    {
+      "id": "raporty",
+      "name": "Raporty",
+      "domain": "merchant",
+      "owner": "Piotr Nowak",
+      "color_index": 11,
+      "color_name": "cyan",
+      "color_fill": "#A5F3FC",
+      "projects": [
+        6,
+        7
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "seq": 1,
+      "id": "blik-recurring",
+      "name": "Płatności cykliczne BLIK",
+      "team": "blik",
+      "product": "blik",
+      "size": "L",
+      "weeks": 8,
+      "ongoing": false,
+      "requested_start": "2027-01-01",
+      "depends_on": [],
+      "earliest_start": "2027-01-01",
+      "start": "2027-01-01",
+      "end": "2027-02-26",
+      "last_day": "2027-02-25",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-01-01",
+        "end": "2027-02-26"
+      },
+      "color_index": 10,
+      "color_name": "blue",
+      "color_fill": "#BFDBFE",
+      "flags": [],
+      "neighbors": [
+        2,
+        10
+      ]
+    },
+    {
+      "seq": 2,
+      "id": null,
+      "name": "Przebudowa Pay-by-link",
+      "team": "blik",
+      "product": null,
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "requested_start": "2027-01-01",
+      "depends_on": [],
+      "earliest_start": "2027-01-01",
+      "start": "2027-01-01",
+      "end": "2027-01-29",
+      "last_day": "2027-01-28",
+      "lane": 2,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-01-01",
+        "end": "2027-01-29"
+      },
+      "color_index": 1,
+      "color_name": "green",
+      "color_fill": "#BBF7D0",
+      "flags": [],
+      "neighbors": [
+        1,
+        4,
+        10
+      ]
+    },
+    {
+      "seq": 3,
+      "id": null,
+      "name": "BLIK w aplikacji",
+      "team": "app",
+      "product": "blik",
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "requested_start": null,
+      "depends_on": [
+        1
+      ],
+      "earliest_start": "2027-02-26",
+      "start": "2027-02-26",
+      "end": "2027-03-26",
+      "last_day": "2027-03-25",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-02-26",
+        "end": "2027-03-26"
+      },
+      "color_index": 10,
+      "color_name": "blue",
+      "color_fill": "#BFDBFE",
+      "flags": [
+        "auto_start"
+      ],
+      "neighbors": [
+        10
+      ]
+    },
+    {
+      "seq": 4,
+      "id": null,
+      "name": "Widżety Android",
+      "team": "app",
+      "product": null,
+      "size": "S",
+      "weeks": 2,
+      "ongoing": false,
+      "requested_start": "2027-01-01",
+      "depends_on": [],
+      "earliest_start": "2027-01-01",
+      "start": "2027-01-01",
+      "end": "2027-01-15",
+      "last_day": "2027-01-14",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-01-01",
+        "end": "2027-01-15"
+      },
+      "color_index": 3,
+      "color_name": "pink",
+      "color_fill": "#FBCFE8",
+      "flags": [],
+      "neighbors": [
+        2
+      ]
+    },
+    {
+      "seq": 5,
+      "id": null,
+      "name": "BLIK w portalu",
+      "team": "portal",
+      "product": "blik",
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "requested_start": "2027-02-01",
+      "depends_on": [],
+      "earliest_start": "2027-02-01",
+      "start": "2027-02-01",
+      "end": "2027-03-01",
+      "last_day": "2027-02-28",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-02-01",
+        "end": "2027-03-01"
+      },
+      "color_index": 10,
+      "color_name": "blue",
+      "color_fill": "#BFDBFE",
+      "flags": [],
+      "neighbors": [
+        7,
+        8
+      ]
+    },
+    {
+      "seq": 6,
+      "id": null,
+      "name": "Raport dzienny",
+      "team": "portal",
+      "product": "raporty",
+      "size": "S",
+      "weeks": 2,
+      "ongoing": false,
+      "requested_start": "2027-01-01",
+      "depends_on": [],
+      "earliest_start": "2027-01-01",
+      "start": "2027-01-01",
+      "end": "2027-01-15",
+      "last_day": "2027-01-14",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-01-01",
+        "end": "2027-01-15"
+      },
+      "color_index": 11,
+      "color_name": "cyan",
+      "color_fill": "#A5F3FC",
+      "flags": [],
+      "neighbors": []
+    },
+    {
+      "seq": 7,
+      "id": null,
+      "name": "Eksport CSV",
+      "team": "portal",
+      "product": "raporty",
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "requested_start": "2027-03-01",
+      "depends_on": [],
+      "earliest_start": "2027-03-01",
+      "start": "2027-03-01",
+      "end": "2027-03-29",
+      "last_day": "2027-03-28",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-03-01",
+        "end": "2027-03-29"
+      },
+      "color_index": 4,
+      "color_name": "sky",
+      "color_fill": "#BAE6FD",
+      "flags": [],
+      "neighbors": [
+        5,
+        8,
+        9
+      ]
+    },
+    {
+      "seq": 8,
+      "id": null,
+      "name": "Zwroty w portalu",
+      "team": "portal",
+      "product": null,
+      "size": "S",
+      "weeks": 2,
+      "ongoing": false,
+      "requested_start": "2027-03-01",
+      "depends_on": [],
+      "earliest_start": "2027-03-01",
+      "start": "2027-03-01",
+      "end": "2027-03-15",
+      "last_day": "2027-03-14",
+      "lane": 2,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-03-01",
+        "end": "2027-03-15"
+      },
+      "color_index": 0,
+      "color_name": "indigo",
+      "color_fill": "#C7D2FE",
+      "flags": [],
+      "neighbors": [
+        5,
+        7
+      ]
+    },
+    {
+      "seq": 9,
+      "id": null,
+      "name": "Utrzymanie portalu",
+      "team": "portal",
+      "product": null,
+      "size": null,
+      "weeks": null,
+      "ongoing": true,
+      "requested_start": "2027-04-01",
+      "depends_on": [],
+      "earliest_start": "2027-04-01",
+      "start": "2027-04-01",
+      "end": null,
+      "last_day": null,
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-04-01",
+        "end": "2027-07-01"
+      },
+      "color_index": 5,
+      "color_name": "amber",
+      "color_fill": "#FDE68A",
+      "flags": [
+        "continues"
+      ],
+      "neighbors": [
+        7
+      ]
+    },
+    {
+      "seq": 10,
+      "id": null,
+      "name": "Przelewy natychmiastowe",
+      "team": "blik",
+      "product": null,
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "requested_start": "2027-02-01",
+      "depends_on": [],
+      "earliest_start": "2027-02-01",
+      "start": "2027-02-01",
+      "end": "2027-03-01",
+      "last_day": "2027-02-28",
+      "lane": 2,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "visible": {
+        "start": "2027-02-01",
+        "end": "2027-03-01"
+      },
+      "color_index": 2,
+      "color_name": "orange",
+      "color_fill": "#FED7AA",
+      "flags": [],
+      "neighbors": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "monthly_load": {
+    "months": [
+      "2027-01",
+      "2027-02",
+      "2027-03",
+      "2027-04",
+      "2027-05",
+      "2027-06"
+    ],
+    "teams": [
+      {
+        "team": "blik",
+        "load": [
+          0.9516,
+          0.9464,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "team": "app",
+        "load": [
+          0.4516,
+          0.1071,
+          0.8065,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "team": "portal",
+        "load": [
+          0.2258,
+          0.5,
+          0.6774,
+          0.5,
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "subdomains": [
+      {
+        "subdomain": "channels",
+        "load": [
+          0.7849,
+          0.6667,
+          0.2688,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "subdomain": "merchant",
+        "load": [
+          0.2258,
+          0.5,
+          0.6774,
+          0.5,
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "total": [
+      0.5613,
+      0.6,
+      0.4323,
+      0.2,
+      0.2,
+      0.2
+    ]
+  },
+  "warnings": []
+}

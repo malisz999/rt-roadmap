@@ -8,7 +8,15 @@ from ruamel.yaml import YAML
 
 from rt.cli import main
 from rt.convert.emit import dump, dump_slow, header_comment
-from rt.convert.merge import BaseTeam, base_size_labels, base_teams, resolve_team, team_hint
+from rt.convert.merge import (
+    BaseProduct,
+    BaseTeam,
+    base_products,
+    base_size_labels,
+    base_teams,
+    resolve_team,
+    team_hint,
+)
 from rt.io.streams import FakeIO
 
 BASE = (Path(__file__).resolve().parents[2] / "docs" / "fixtures" / "convert" / "teams.base.yaml").read_bytes()
@@ -121,3 +129,55 @@ def test_skeleton_subdomain_conflict_with_default_subdomain_is_e107() -> None:
         'in.csv:3:4: error E107: team "Karty" is in subdomain "Kanały" (line 2) and "Roadmap" (line 3) '
         '[column "subdomain"]'
     )
+
+
+# --- product column (RS 3.4, AT-64) ---------------------------------------------------------------------------
+
+PRODUCTS_BASE = BASE.replace(
+    b"\nprojects: []",
+    b"\nproducts:\n  - id: blik\n    name: BLIK\n    domain: channels\n  - id: core\n    name: Aplikacja\n"
+    b"    domain: merchant\n\nprojects: []",
+)
+
+
+def test_base_products_are_read_defensively() -> None:
+    assert base_products(YAML().load(PRODUCTS_BASE)) == [BaseProduct("blik", "BLIK"), BaseProduct("core", "Aplikacja")]
+    assert base_products({"products": [{"id": 3}, "x", {"id": "ok", "name": 7}]}) == [BaseProduct("ok", None)]
+    assert base_products({"products": {}}) == [] and base_products(None) == []
+
+
+def test_product_cells_resolve_by_id_or_name() -> None:
+    io = _run(
+        "name,size,team,product\nA,M,blik,BLIK\nB,S,app,core\nC,S,app,\n",
+        "--base",
+        "base.yaml",
+        **{"base.yaml": PRODUCTS_BASE},
+    )
+    assert io.code == 0, io.stderr
+    out = YAML().load(io.stdout)
+    assert [p.get("product") for p in out["projects"]] == ["blik", "core", None]
+    assert "  - name: A\n    team: blik\n    product: blik\n    size: M\n" in io.stdout.decode("utf-8")
+
+
+def test_unknown_product_is_one_e038_per_row() -> None:
+    io = _run(
+        "name,size,team,product\nA,M,blik,Blik\nB,S,app,zzz\n", "--base", "base.yaml", **{"base.yaml": PRODUCTS_BASE}
+    )
+    assert io.code == 1 and io.stdout == b""
+    assert _errors(io) == [
+        'in.csv:2:4: error E038: project "A" references unknown product "Blik" (did you mean "blik"?)'
+        ' [column "product"]',
+        'in.csv:3:4: error E038: project "B" references unknown product "zzz" [column "product"]',
+    ]
+
+
+def test_product_column_needs_products_in_the_base() -> None:
+    io = _run("name,size,team,product\nA,M,blik,blik\n", "--base", "base.yaml")
+    assert _errors(io) == ['in.csv:2:4: error E038: project "A" references unknown product "blik" [column "product"]']
+
+
+def test_product_column_without_base_is_w020() -> None:
+    io = _run("name,size,product\nA,M,blik\n")
+    assert io.code == 0, io.stderr
+    assert 'in.csv:1:3: warning W020: column "product" is ignored without --base' in io.stderr
+    assert b"product" not in io.stdout

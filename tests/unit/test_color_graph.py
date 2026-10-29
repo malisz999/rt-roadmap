@@ -1,4 +1,4 @@
-"""Adjacency and DSATUR colouring (RS CO-1 to CO-6, 5.4, AT-10, AT-11, W007, W009)."""
+"""Adjacency and DSATUR colouring (RS CO-1 to CO-6, 5.2, 5.4, AT-10, AT-11, W007, W009, W014)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 from modelkit import DE, FIXTURES, WE, load_path, make_model
 
 from rt.color.adjacency import lane_indices, neighbours
-from rt.color.dsatur import assign_colors, assign_keys
+from rt.color.dsatur import assign_colors, assign_keys, product_keys
 from rt.diagnostics import Code, Collector
 from rt.model.types import ResolvedModel
 from rt.schedule.horizon import anchor, resolve_horizon, visibility
@@ -165,3 +165,85 @@ def test_least_used_colour_spreads_use() -> None:
     assert all(not v for v in nb.values())
     keys = assign_keys(m, vis, nb, Collector())
     assert [keys[s] for s in range(1, 7)] == [0, 1, 2, 3, 4, 5]
+
+
+# --- products (RS 5.2) ----------------------------------------------------------------------------------------
+
+
+def test_product_bars_share_the_product_colour_and_standalone_bars_avoid_it() -> None:
+    m = make_model(
+        [("a", "one", 2), ("b", "two", 1)],
+        [
+            {"name": "A", "team": "a", "start": "2027-01", "product": "p"},
+            {"name": "B", "team": "a", "start": "2027-01", "product": "p"},  # adjacent, same product: no W009
+            {"name": "C", "team": "b", "start": "2027-01", "product": "p"},  # another subdomain
+            {"name": "D", "team": "a", "start": "2027-02"},  # standalone, next to A and B
+            {"name": "E", "team": "a", "start": "2027-02", "product": "q", "color": "sky"},  # pin wins
+        ],
+        products=[("p", "one", None), ("q", "two", None)],
+    )
+    _, vis, nb = graph(m)
+    diags = Collector()
+    assert product_keys(m, diags) == {"p": 10, "q": 11}
+    keys = assign_keys(m, vis, nb, diags)
+    assert keys[1] == keys[2] == keys[3] == 10
+    assert keys[5] == 4
+    assert keys[4] in range(10) and keys[4] not in {keys[n] for n in nb[4]}
+    assert not diags.items
+
+
+def test_product_colours_pins_then_automatic_order() -> None:
+    m = make_model(
+        [("a", "one", 1)],
+        [{"name": "A", "team": "a", "start": "2027-01", "product": "x"}],
+        products=[("x", "one", None), ("y", "one", "blue"), ("z", "one", "#123456"), ("w", "one", None)],
+    )
+    diags = Collector()
+    # y pins blue (10), so the automatic products skip it; custom hex takes no palette entry
+    assert product_keys(m, diags) == {"y": 10, "z": "#123456", "x": 11, "w": 12}
+    assert not diags.items
+
+
+def test_w014_when_products_outnumber_the_palette() -> None:
+    products = [(f"p{i}", "one", None) for i in range(34)]
+    m = make_model([("a", "one", 1)], [{"name": "A", "team": "a", "start": "2027-01"}], products=products)
+    diags = Collector()
+    keys = product_keys(m, diags)
+    assert [keys[f"p{i}"] for i in range(34)] == [*range(10, 32), *range(10), 0, 1]
+    assert [(d.code, d.line) for d in diags.items] == [(Code.W014, 50 + 32), (Code.W014, 50 + 33)]
+    assert diags.items[0].message == 'products "P22" and "P32" share colour "indigo" (more than 32 products)'
+
+
+def test_w009_for_adjacent_bars_of_different_products_with_one_colour() -> None:
+    m = make_model(
+        [("a", "one", 2)],
+        [
+            {"name": "A", "team": "a", "start": "2027-01", "product": "p"},
+            {"name": "B", "team": "a", "start": "2027-01", "product": "q"},
+            {"name": "C", "team": "a", "start": "2027-03", "product": "p", "color": "teal"},
+            {"name": "D", "team": "a", "start": "2027-03", "color": "teal"},
+        ],
+        products=[("p", "one", "violet"), ("q", "one", "violet")],
+    )
+    _, vis, nb = graph(m)
+    diags = Collector()
+    keys = assign_keys(m, vis, nb, diags)
+    assert keys == {1: 6, 2: 6, 3: 7, 4: 7}
+    assert [d.message for d in diags.items] == [
+        'projects "A" and "B" are adjacent and both coloured "violet"',
+        'projects "C" and "D" are adjacent and both pinned to "teal"',
+    ]
+
+
+def test_product_bars_on_base_colours_count_as_neighbours_and_use() -> None:
+    m = make_model(
+        [("a", "one", 2)],
+        [
+            {"name": "A", "team": "a", "start": "2027-01", "product": "p"},
+            {"name": "B", "team": "a", "start": "2027-01"},
+        ],
+        products=[("p", "one", "indigo")],
+    )
+    _, vis, nb = graph(m)
+    keys = assign_keys(m, vis, nb, Collector(), {"p": 0})
+    assert keys == {1: 0, 2: 1}

@@ -68,7 +68,7 @@ def test_at_19_stdin_to_stdout(tmp_path: Path) -> None:
     assert re.search(r"^rt: wrote <stdout> — 4 subdomains, 7 teams, 36 projects, 1 warnings?$", r.stderr, re.M), (
         r.stderr
     )
-    assert re.search(r"^<stdin>:226:5: warning W001: ", r.stderr, re.M), r.stderr
+    assert re.search(r"^<stdin>:252:5: warning W001: ", r.stderr, re.M), r.stderr
     assert list(tmp_path.iterdir()) == [], "nothing written to disk"
 
 
@@ -82,7 +82,7 @@ def test_at_20_validate_json(tmp_path: Path) -> None:
     assert len(data) == 1
     d = data[0]
     assert d["code"] == "W001"
-    assert (d["line"], d["column"]) == (226, 5)
+    assert (d["line"], d["column"]) == (252, 5)
     assert d["severity"] == "warning"
     assert d["file"] == "roadmap.example.yaml"
     assert '"BLIK w aplikacji"' in d["message"]

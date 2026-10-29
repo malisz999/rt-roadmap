@@ -16,4 +16,12 @@
 <span class="rt-legend__item"><span class="rt-sym rt-sym--quarter" aria-hidden="true"></span>Quarter start</span>
 <span class="rt-legend__item"><span class="rt-sym rt-sym--today" aria-hidden="true"></span>Today</span>
 </div>
+{% if page.legend.products %}
+<div class="rt-legend__group">
+<span class="rt-legend__title">Products</span>
+{% for pr in page.legend.products %}
+<span class="rt-product" data-product="{{ pr.id }}" data-color-index="{{ pr.color_index }}" style="--fill: {{ pr.fill }}; --accent: {{ pr.accent }}; --ink: {{ pr.ink }}" title="{{ pr.title }}"{{ L }}><strong>{{ pr.name }}</strong>{{ pr.details }}</span>
+{% endfor %}
+</div>
+{% endif %}
 </section>

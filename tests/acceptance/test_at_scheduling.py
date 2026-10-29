@@ -113,14 +113,18 @@ def test_at_10_neighbours_have_distinct_colours(ex_render: Rendered) -> None:
     for p in plan["projects"]:
         for n in p["neighbors"]:
             assert p["seq"] in by_seq[n]["neighbors"], "neighbour relation must be symmetric"
+            if p["product"] is not None and by_seq[n]["product"] == p["product"]:
+                continue  # bars of one product share its colour by design (RS 5.2)
             assert p["color_index"] != by_seq[n]["color_index"], (p["name"], by_seq[n]["name"])
             pairs += 1
         if p["visible"] is not None:
-            assert p["color_index"] is not None and 0 <= p["color_index"] <= 9
+            assert p["color_index"] is not None and 0 <= p["color_index"] <= 31
+            if p["product"] is None:  # standalone bars: palette entries 0-9 (RS 5.2 step 3)
+                assert p["color_index"] <= 9, p["name"]
     assert pairs > 0
     assert "W007" not in [w["code"] for w in plan["warnings"]]
     assert "W007" not in ex_render.result.codes()
-    # the pinned colour in EX (Tokenizacja sieciowa, color: violet)
+    # the pinned colour in EX (Tokenizacja sieciowa, color: violet), which wins over its product's colour
     tok = next(p for p in plan["projects"] if p["name"] == "Tokenizacja sieciowa")
     assert (tok["color_index"], tok["color_name"], tok["color_fill"]) == (6, "violet", "#DDD6FE")
 

@@ -101,16 +101,39 @@ subdomains:
         capacity: { developers: 2, analysts: 1 }
 
 # -----------------------------------------------------------------------------
+#  Products (optional): a product groups projects and is owned by one domain
+#  (a subdomain id). Its projects may run in teams of any subdomain, and all
+#  of its bars share one colour, so a product is easy to follow across the
+#  roadmap. Projects without "product" are coloured as usual.
+#    color   optional palette name or #RRGGBB; otherwise chosen automatically
+# -----------------------------------------------------------------------------
+products:
+  - id: blik
+    name: BLIK
+    domain: channels
+    owner: Anna Kowalska
+    description: Płatności BLIK online i w aplikacji mobilnej
+  - id: tokens
+    name: Tokenizacja kart
+    domain: channels
+    owner: Marek Wiśniewski
+
+# -----------------------------------------------------------------------------
 #  Projects — scheduled in exactly this order.
 #  Required: name, team, and EITHER size OR ongoing: true.
 #  Optional:
 #    id          short handle used in depends_on (letters, digits, - and _)
+#    product     id of a product above; the bar takes the product's colour
 #    start       YYYY-MM; omit to start as soon as a slot is free
 #    depends_on  [id or name, ...] — starts only after these have ended;
 #                they must be written above this project
 #    description tooltip text
-#    color       palette name or #RRGGBB
-#  Palette names: indigo green orange pink sky amber violet teal lime sand
+#    color       palette name or #RRGGBB; wins over the product's colour
+#  Palette names: indigo green orange pink sky amber violet teal lime sand,
+#  and (used first for products) blue cyan emerald yellow fuchsia purple stone,
+#  plus sand-deep indigo-deep green-deep orange-deep pink-deep sky-deep
+#  amber-deep violet-deep teal-deep lime-deep blue-deep cyan-deep emerald-deep
+#  fuchsia-deep purple-deep
 # -----------------------------------------------------------------------------
 projects:
 
@@ -122,6 +145,7 @@ projects:
   - id: blik-recurring
     name: Płatności cykliczne BLIK
     team: blik
+    product: blik
     size: L
     start: 2026-11
     description: Cykliczne płatności BLIK dla merchantów subskrypcyjnych
@@ -146,15 +170,17 @@ projects:
   - id: tokenization
     name: Tokenizacja sieciowa
     team: cards
+    product: tokens
     size: XL
     start: 2027-01
-    color: violet           # pinned colour; all others are assigned automatically
+    color: violet           # pinned colour, wins over the product colour
   - name: Portfele cyfrowe (Apple Pay, Google Pay)
     team: cards
     size: M
     start: 2027-02
   - name: Płatności kartą inicjowane przez merchanta
     team: cards
+    product: tokens
     size: L
     depends_on: [tokenization]   # no start: right after tokenization ends
 
@@ -225,6 +251,7 @@ projects:
     start: 2026-11
   - name: BLIK w aplikacji
     team: app
+    product: blik             # a product's projects may sit in any subdomain
     size: L
     start: 2026-12
     depends_on: [blik-recurring]    # cross-team dependency; delays this project by 26 days

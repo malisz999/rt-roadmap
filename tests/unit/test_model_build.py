@@ -333,3 +333,95 @@ def test_team_without_id_and_bad_team_item() -> None:
         'team #2 of subdomain #1 must be a mapping, got "x"',
         'unknown key "extra" in subdomain #1',
     ]
+
+
+# --- products (RS 3.2) ----------------------------------------------------------------------------------------
+
+PRODUCTS = MINIMAL.replace(
+    "projects:\n",
+    "products:\n"
+    "  - id: blik\n"
+    "    name: BLIK\n"
+    "    domain: core\n"
+    "    owner: Anna\n"
+    "    description: Płatności\n"
+    "    color: sand-deep\n"
+    "  - id: cards\n"
+    "    name: Cards\n"
+    "    domain: core\n"
+    "projects:\n",
+).replace("    team: alpha\n", "    team: alpha\n    product: blik\n", 1)
+
+
+def test_products_and_project_product() -> None:
+    model, diags = build(PRODUCTS)
+    assert model is not None and not diags.items
+    blik, cards = model.products
+    assert (blik.id, blik.name, blik.domain_id, blik.owner, blik.description) == (
+        "blik",
+        "BLIK",
+        "core",
+        "Anna",
+        "Płatności",
+    )
+    assert blik.color is not None and blik.color.palette_name == "sand-deep"
+    assert (blik.pos.line, blik.pos.col) == (15, 5) and blik.field_pos["domain"].line == 17
+    assert (cards.owner, cards.description, cards.color) == (None, None, None)
+    assert model.product("cards") is cards
+    assert model.projects[0].product_id == "blik"
+    with pytest.raises(KeyError):
+        model.product("nope")
+
+
+def test_products_absent_is_empty() -> None:
+    model, diags = build(MINIMAL)
+    assert model is not None and not diags.items
+    assert model.products == () and model.projects[0].product_id is None
+
+
+def test_product_structure_errors() -> None:
+    text = MINIMAL.replace(
+        "projects:\n",
+        "products:\n"
+        "  - just a string\n"
+        "  - name: No id\n"
+        "    domain: core\n"
+        "  - id: Bad Id\n"
+        "    name: X\n"
+        "    domain: [core]\n"
+        "    colour: sky\n"
+        "    color: blu\n"
+        "    owner: " + "o" * 101 + "\n"
+        "  - id: noname\n"
+        "projects:\n",
+    ).replace("    team: alpha\n", "    team: alpha\n    product: [blik]\n", 1)
+    model, diags = build(text)
+    assert model is not None
+    found = [(c, line) for c, line, _ in codes(diags)]
+    assert found == [
+        ("E011", 15),  # product #1 is not a mapping
+        ("E010", 16),  # product #2 has no id
+        ("E012", 18),  # bad id pattern (kept)
+        ("E011", 20),  # domain is a list
+        ("E002", 21),  # colour
+        ("E033", 22),  # blu
+        ("E012", 23),  # owner too long
+        ("E010", 24),  # noname: name
+        ("E010", 24),  # noname: domain
+        ("E011", 28),  # project.product is a list
+    ]
+    msgs = messages(diags)
+    assert msgs[0] == 'product #1 must be a mapping, got "just a string"'
+    assert 'unknown key "colour" in product "Bad Id" (did you mean "color"?)' in msgs
+    assert '"domain" must be a subdomain id, got a list' in msgs
+    assert [p.id for p in model.products] == ["Bad Id", "noname"]
+    bad, noname = model.products
+    assert bad.incomplete and bad.domain_id == "" and bad.color is None
+    assert noname.name == "noname" and noname.incomplete
+    assert model.projects[0].product_id is None and model.projects[0].incomplete
+
+
+def test_products_must_be_a_list() -> None:
+    model, diags = build(MINIMAL.replace("projects:\n", "products: {}\nprojects:\n"))
+    assert model is not None and model.products == ()
+    assert messages(diags) == ['"products" must be a list, got a mapping']

@@ -51,6 +51,26 @@ projects:
     depends_on: [First project]      # finish-to-start
 ```
 
+## Products
+
+A product groups projects across teams and is owned by one domain (a subdomain id). All of its bars share one
+colour, and the legend lists each product with its owning domain and owner:
+
+```yaml
+products:
+  - id: blik
+    name: BLIK
+    domain: product                  # the owning subdomain
+    owner: Anna Kowalska             # optional
+projects:
+  - name: BLIK in the app
+    team: core                       # a team in any subdomain
+    product: blik
+    size: M
+```
+
+Projects without `product` are coloured as before. A project's own `color` wins over its product's colour.
+
 `rt schema` prints the JSON Schema; add `# yaml-language-server: $schema=./roadmap.schema.json` at the top of
 your file for completion and validation in editors such as VS Code.
 
@@ -98,8 +118,8 @@ Windows PowerShell 5.1 re-encodes text between programs; there, use `-o` for fil
 ## Spreadsheet import
 
 Export the project list as CSV (UTF-8, or `--encoding cp1250` for Excel's plain CSV on Polish Windows). Only the
-`name` and `size` columns are required; `team`, `subdomain`, `start`, `ongoing`, `depends_on`, `id`,
-`description` and `color` are optional. Rename other headers with `--map`, and keep teams and settings in a base
+`name` and `size` columns are required; `team`, `product`, `subdomain`, `start`, `ongoing`, `depends_on`,
+`id`, `description` and `color` are optional (`product` needs a base file that defines the products). Rename other headers with `--map`, and keep teams and settings in a base
 file:
 
 ```bash
@@ -119,5 +139,5 @@ uv run pytest -q -m slow          # performance tests (RS NF-3, NF-11)
 ```
 
 Tests: `tests/unit` and `tests/property` (developer), `tests/acceptance`, `tests/cli`, `tests/html`,
-`tests/golden` (black-box acceptance suite, one test per AT-01 … AT-55). `tools/reference_plan.py` and
+`tests/golden` (black-box acceptance suite, one test per AT-01 … AT-65). `tools/reference_plan.py` and
 `tools/reference_convert.py` are the differential oracles; `tools/gen_stress.py` generates the stress roadmap.

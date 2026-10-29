@@ -1,7 +1,8 @@
 """Differential test: rt convert equals tools/reference_convert.py on generated valid CSVs (ADS 10.1).
 
-Random delimiter, quoting, BOM, CRLF, header case and column order, Polish text, optional columns, skeleton and
-base mode. The oracle runs in a subprocess with the same interpreter (it needs only ruamel.yaml).
+Random delimiter, quoting, BOM, CRLF, header case and column order, Polish text, optional columns (product
+included), skeleton and base mode; the base gets a products block. The oracle runs in a subprocess with the same
+interpreter (it needs only ruamel.yaml).
 """
 
 from __future__ import annotations
@@ -24,7 +25,17 @@ from rt.options import ConvertOptions
 
 ROOT = Path(__file__).resolve().parents[2]
 ORACLE = ROOT / "tools" / "reference_convert.py"
-BASE = ROOT / "docs" / "fixtures" / "convert" / "teams.base.yaml"
+BASE_FIXTURE = ROOT / "docs" / "fixtures" / "convert" / "teams.base.yaml"
+PRODUCTS_BLOCK = """
+products:
+  - id: blik
+    name: BLIK
+    domain: channels
+    owner: Anna Kowalska   # product owner
+  - id: app-core
+    name: Aplikacja
+    domain: merchant
+"""
 
 WORDS = [
     "Płatności",
@@ -49,6 +60,7 @@ SKELETON_TEAMS = [
     ("BLIK", "Kanały płatności"),
 ]
 BASE_TEAMS = ["blik", "BLIK i przelewy", "app", "Aplikacja mobilna"]
+PRODUCTS = ["blik", "BLIK", "app-core", "Aplikacja", ""]
 SKELETON_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "m", "xl", "s"]
 BASE_SIZES = ["S", "M", "L", "s", "l"]
 
@@ -70,7 +82,7 @@ def _start(d: date, style: int) -> str:
 @st.composite
 def cases(draw: st.DrawFn) -> Case:
     base = draw(st.booleans())
-    optional = ["start", "ongoing", "depends_on", "id", "description", "color", "owner"]
+    optional = ["start", "ongoing", "depends_on", "id", "description", "color", "owner", "product"]
     if not base:
         optional += ["subdomain", "team"]
     required = ["name", "size", "team"] if base else ["name", "size"]  # the base has two teams (E105 otherwise)
@@ -115,6 +127,8 @@ def cases(draw: st.DrawFn) -> Case:
             row["color"] = draw(st.sampled_from(["sky", "teal", "#AABBCC", "#c7d2fe"]))
         if "owner" in columns:
             row["owner"] = draw(st.sampled_from(["", "Anna", "Piotr"]))
+        if "product" in columns:  # ignored with W020 in skeleton mode
+            row["product"] = draw(st.sampled_from(PRODUCTS))
         if not ongoing:
             finite.append(row.get("name", name).strip())
         rows.append(row)
@@ -141,10 +155,17 @@ def cases(draw: st.DrawFn) -> Case:
     return Case(data, base)
 
 
-def _oracle(path: Path, base: bool) -> tuple[int, bytes]:
+def _base(tmp: Path) -> Path:
+    path = tmp / "teams.base.yaml"
+    text = BASE_FIXTURE.read_text(encoding="utf-8").replace("\nprojects: []", PRODUCTS_BLOCK + "\nprojects: []")
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _oracle(path: Path, base: Path | None) -> tuple[int, bytes]:
     argv = [sys.executable, str(ORACLE), str(path)]
-    if base:
-        argv += ["--base", str(BASE)]
+    if base is not None:
+        argv += ["--base", str(base)]
     proc = subprocess.run(argv, capture_output=True, check=False, timeout=60)
     return proc.returncode, proc.stdout
 
@@ -155,10 +176,11 @@ def test_convert_equals_reference(tmp_path_factory: pytest.TempPathFactory, case
     tmp = tmp_path_factory.mktemp("conv")
     path = tmp / "projects.csv"
     path.write_bytes(case.data)
+    base = _base(tmp) if case.base else None
     io_port = FakeIO(real_fs=True)
-    opts = ConvertOptions(input=str(path), default_today=date(2026, 10, 24), base=str(BASE) if case.base else None)
+    opts = ConvertOptions(input=str(path), default_today=date(2026, 10, 24), base=str(base) if base else None)
     code = run_convert(opts, io_port)
     assert code == 0, io_port.stderr
-    oracle_code, oracle_out = _oracle(path, case.base)
+    oracle_code, oracle_out = _oracle(path, base)
     assert oracle_code == 0
     assert io_port.stdout == oracle_out

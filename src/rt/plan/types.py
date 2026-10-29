@@ -40,6 +40,19 @@ class TeamPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class ProductPlan:
+    id: str
+    name: str
+    domain: str  # owning subdomain id
+    owner: str | None
+    color_index: int | None  # None for a custom hex colour
+    color_name: str | None
+    color_fill: str
+    projects: tuple[int, ...]  # seqs of its projects, file order
+    color: ColorRef = field(metadata=NOT_JSON)  # fill, accent and text for the renderer
+
+
+@dataclass(frozen=True, slots=True)
 class VisibleOut:
     start: date
     end: date
@@ -51,6 +64,7 @@ class PlannedProject:
     id: str | None
     name: str
     team: str
+    product: str | None  # product id; None = standalone
     size: str | None
     weeks: int | None
     ongoing: bool
@@ -116,6 +130,7 @@ class Plan:
     horizon: HorizonOut
     on_conflict: Mode
     teams: tuple[TeamPlan, ...]
+    products: tuple[ProductPlan, ...]  # file order = legend order
     projects: tuple[PlannedProject, ...]
     monthly_load: MonthlyLoad
     warnings: tuple[PlanWarning, ...]  # sorted by line, column, code

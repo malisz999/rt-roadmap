@@ -248,3 +248,78 @@ def test_csv_missing_size_points_at_size_cell(tmp_path: Path) -> None:
 def test_load_raw_helper_reports_nothing_for_minimal() -> None:
     raw, diags = load_raw(MINIMAL)
     assert raw is not None and not diags.items
+
+
+# --- products (RS 3.2, 9: E024, E025, E038, E039) -----------------------------------------------------------
+
+
+def test_product_reference_errors() -> None:
+    text = doc(
+        """\
+        version: 1
+        roadmap:
+          title: T
+        sizes: {S: 2}
+        subdomains:
+          - id: channels
+            name: Channels
+            teams:
+              - id: alpha
+                name: Alpha
+                parallel_projects: 1
+        products:
+          - id: blik
+            name: BLIK
+            domain: channels
+          - id: blik
+            name: Cards
+            domain: chanels
+          - id: cards
+            name: BLIK
+            domain: risk
+          - id: noname
+            domain: channels
+        projects:
+          - name: A
+            team: alpha
+            product: blk
+            size: S
+          - name: B
+            team: alpha
+            product: cards
+            size: S
+        """
+    )
+    rm, diags = resolve(text)
+    assert rm is None
+    assert codes(diags) == [
+        ("E024", 16, 9),
+        ("E039", 18, 13),
+        ("E025", 20, 11),
+        ("E039", 21, 13),
+        ("E010", 22, 5),
+        ("E038", 27, 14),
+    ]
+    msgs = messages(diags)
+    assert msgs[0] == 'product id "blik" already defined at line 13'
+    assert msgs[1] == 'product "Cards" references unknown domain "chanels" (did you mean "channels"?)'
+    assert msgs[2] == 'product name "BLIK" already used at line 14'
+    assert msgs[3] == 'product "BLIK" references unknown domain "risk"'
+    assert msgs[5] == 'project "A" references unknown product "blk" (did you mean "blik"?)'
+
+
+def test_products_resolve() -> None:
+    text = MINIMAL.replace("projects:\n", "products:\n  - id: p\n    name: P\n    domain: core\nprojects:\n").replace(
+        "    team: alpha\n", "    team: alpha\n    product: p\n", 1
+    )
+    rm, diags = resolve(text)
+    assert rm is not None and not diags.items
+    assert rm.products == rm.model.products and rm.projects[0].product_id == "p"
+
+
+def test_incomplete_product_blocks_resolution() -> None:
+    text = MINIMAL.replace(
+        "projects:\n", "products:\n  - id: p\n    name: P\n    domain: core\n    color: 7\nprojects:\n"
+    )
+    rm, diags = resolve(text)
+    assert rm is None and [c for c, _, _ in codes(diags)] == ["E011"]

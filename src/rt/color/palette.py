@@ -1,4 +1,6 @@
-"""The fixed 10-colour palette and custom hex colour derivation (RS 5.3, CO-4).
+"""The fixed 32-colour palette and custom hex colour derivation (RS 5.3, CO-4).
+
+Entries 0–9 colour standalone bars; products take 10–31 first, then 0–9 (RS 5.2).
 
 Custom colours: the accent is the same hue with HSL lightness multiplied by 0.65 ("darkened by 35 %", read as a
 relative reduction), computed exactly with fractions and rounded half up per channel. The text colour is
@@ -42,8 +44,33 @@ PALETTE: tuple[PaletteEntry, ...] = (
     PaletteEntry(7, "teal", "#99F6E4", "#14B8A6"),
     PaletteEntry(8, "lime", "#D9F99D", "#65A30D"),
     PaletteEntry(9, "sand", "#EADBC8", "#A16207"),
+    # 10–31: extra entries for products (RS 5.3); text contrast ≥ 7:1.
+    PaletteEntry(10, "blue", "#BFDBFE", "#3B82F6"),
+    PaletteEntry(11, "cyan", "#A5F3FC", "#06B6D4"),
+    PaletteEntry(12, "emerald", "#A7F3D0", "#10B981"),
+    PaletteEntry(13, "yellow", "#FEF08A", "#CA8A04"),
+    PaletteEntry(14, "fuchsia", "#F5D0FE", "#D946EF"),
+    PaletteEntry(15, "purple", "#E9D5FF", "#A855F7"),
+    PaletteEntry(16, "stone", "#E7E5E4", "#78716C"),
+    PaletteEntry(17, "sand-deep", "#D6C3A5", "#854D0E"),
+    PaletteEntry(18, "indigo-deep", "#A5B4FC", "#4F46E5"),
+    PaletteEntry(19, "green-deep", "#86EFAC", "#16A34A"),
+    PaletteEntry(20, "orange-deep", "#FDBA74", "#EA580C"),
+    PaletteEntry(21, "pink-deep", "#F9A8D4", "#DB2777"),
+    PaletteEntry(22, "sky-deep", "#7DD3FC", "#0284C7"),
+    PaletteEntry(23, "amber-deep", "#FCD34D", "#B45309"),
+    PaletteEntry(24, "violet-deep", "#C4B5FD", "#7C3AED"),
+    PaletteEntry(25, "teal-deep", "#5EEAD4", "#0D9488"),
+    PaletteEntry(26, "lime-deep", "#BEF264", "#4D7C0F"),
+    PaletteEntry(27, "blue-deep", "#93C5FD", "#2563EB"),
+    PaletteEntry(28, "cyan-deep", "#67E8F9", "#0891B2"),
+    PaletteEntry(29, "emerald-deep", "#6EE7B7", "#059669"),
+    PaletteEntry(30, "fuchsia-deep", "#F0ABFC", "#C026D3"),
+    PaletteEntry(31, "purple-deep", "#D8B4FE", "#9333EA"),
 )
 PALETTE_SIZE = len(PALETTE)
+BASE: tuple[int, ...] = tuple(range(10))  # standalone bars: DSATUR over these only (RS CO-5)
+PRODUCT_ORDER: tuple[int, ...] = (*range(10, PALETTE_SIZE), *BASE)  # automatic product colours (RS 5.2)
 _BY_NAME = {e.name: e for e in PALETTE}
 _BY_FILL = {e.fill: e for e in PALETTE}
 

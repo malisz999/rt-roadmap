@@ -1,12 +1,14 @@
 """rt reference plan oracle — TEST TOOLING ONLY, never import from src/.
 
-Produced the expected plan files scheduling-worked-example.expected.json and
-dependencies-example.expected.json (requirements spec sections 4, 5, 7.12, 8).
+Produced the expected plan files scheduling-worked-example.expected.json,
+dependencies-example.expected.json and products-example.expected.json
+(requirements spec sections 4, 5, 7.12, 8).
 
 Implements: scheduling in delay and overflow modes, auto-start anchor,
 finish-to-start dependencies, automatic horizon, visibility and flags,
-adjacency and DSATUR colouring (palette names only), utilisation and monthly
-load with half-up rounding, W001-W005/W007/W011 warnings.
+adjacency, product colours and DSATUR colouring (palette names only),
+utilisation and monthly load with half-up rounding,
+W001-W005/W007/W009/W011/W013/W014 warnings.
 Does NOT implement: input validation (assumes a valid file), error mode,
 custom hex colours, W006/W008-W010/W012, horizon cap.
 
@@ -24,7 +26,16 @@ from ruamel.yaml import YAML
 D = dt.date
 PALETTE = [("indigo", "#C7D2FE"), ("green", "#BBF7D0"), ("orange", "#FED7AA"), ("pink", "#FBCFE8"),
            ("sky", "#BAE6FD"), ("amber", "#FDE68A"), ("violet", "#DDD6FE"), ("teal", "#99F6E4"),
-           ("lime", "#D9F99D"), ("sand", "#EADBC8")]
+           ("lime", "#D9F99D"), ("sand", "#EADBC8"),
+           ("blue", "#BFDBFE"), ("cyan", "#A5F3FC"), ("emerald", "#A7F3D0"), ("yellow", "#FEF08A"),
+           ("fuchsia", "#F5D0FE"), ("purple", "#E9D5FF"), ("stone", "#E7E5E4"), ("sand-deep", "#D6C3A5"),
+           ("indigo-deep", "#A5B4FC"), ("green-deep", "#86EFAC"), ("orange-deep", "#FDBA74"),
+           ("pink-deep", "#F9A8D4"), ("sky-deep", "#7DD3FC"), ("amber-deep", "#FCD34D"),
+           ("violet-deep", "#C4B5FD"), ("teal-deep", "#5EEAD4"), ("lime-deep", "#BEF264"),
+           ("blue-deep", "#93C5FD"), ("cyan-deep", "#67E8F9"), ("emerald-deep", "#6EE7B7"),
+           ("fuchsia-deep", "#F0ABFC"), ("purple-deep", "#D8B4FE")]
+BASE = list(range(10))                               # standalone bars (DSATUR)
+PRODUCT_ORDER = list(range(10, len(PALETTE))) + BASE  # automatic product colours
 INF = D(9999, 12, 31)
 
 
@@ -118,7 +129,8 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         reason = None
         if not auto and (dep_days or cap_days):
             reason = "dependency+capacity" if dep_days and cap_days else ("dependency" if dep_days else "capacity")
-        plan.append(dict(seq=seq, pid=p.get("id"), name=p["name"], team=p["team"], size=size, weeks=weeks, ongoing=ongoing,
+        plan.append(dict(seq=seq, pid=p.get("id"), name=p["name"], team=p["team"], product=p.get("product"),
+                         size=size, weeks=weeks, ongoing=ongoing,
                          req=None if auto else req, earliest=earliest, deps=deps, auto=auto, reason=reason,
                          start=s, end=e, lane=i + 1, overflow=i >= nslots, delay=0 if auto else (s - req).days,
                          color=p.get("color"), line=line, col=col))
@@ -183,20 +195,51 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
             sb, lb = lane_idx[(b["team"], b["lane"])]
             if sa == sb and abs(la - lb) <= 1 and gap <= gapd:
                 nb[a["seq"]].add(b["seq"]); nb[b["seq"]].add(a["seq"])
-    col, use = {}, [0] * len(PALETTE)
     names = [n for n, _ in PALETTE]  # palette names
+    # product colours: pins, then the first entry no product has taken (10-31, then 0-9), then the least taken
+    prods = [dict(id=q["id"], name=q["name"], domain=q["domain"], owner=q.get("owner"), color=q.get("color"),
+                  line=q.lc.line + 1, col=q.lc.col + 1) for q in (doc.get("products") or [])]
+    pcol, taken = {}, [0] * len(PALETTE)
+    for q in prods:
+        if q["color"]:
+            c = names.index(q["color"]); pcol[q["id"]] = c; taken[c] += 1
+    for q in prods:
+        if q["id"] in pcol: continue
+        free = [c for c in PRODUCT_ORDER if not taken[c]]
+        if free:
+            c = free[0]
+        else:
+            c = min(range(len(PALETTE)), key=lambda c: (taken[c], c))
+            first = next(o["name"] for o in prods if pcol.get(o["id"]) == c)
+            warnings.append(("W014", q, f'products "{first}" and "{q["name"]}" share colour "{names[c]}" (more than {len(PALETTE)} products)'))
+        pcol[q["id"]] = c; taken[c] += 1
+    # pre-coloured bars: project pins, then product colours
+    col, use, pinned = {}, [0] * len(PALETTE), set()
     for x in vis:
         if x["color"]:
-            c = names.index(x["color"]); col[x["seq"]] = c; use[c] += 1
+            c = names.index(x["color"]); pinned.add(x["seq"])
+        elif x["product"]:
+            c = pcol[x["product"]]
+        else:
+            continue
+        col[x["seq"]] = c; use[c] += 1
+    for x in vis:
+        if x["seq"] not in col: continue
+        for o in sorted(nb[x["seq"]]):
+            if o < x["seq"] and o in col and col[o] == col[x["seq"]]:
+                y = plan[o - 1]
+                if x["product"] and x["product"] == y["product"]: continue
+                how = "pinned to" if {x["seq"], o} <= pinned else "coloured"
+                warnings.append(("W009", x, f'projects "{y["name"]}" and "{x["name"]}" are adjacent and both {how} "{names[col[o]]}"'))
     while len(col) < len(vis):
         unc = [x["seq"] for x in vis if x["seq"] not in col]
         s = min(unc, key=lambda s: (-len({col[n] for n in nb[s] if n in col}), -len(nb[s]), s))
         used = {col[n] for n in nb[s] if n in col}
-        allowed = [c for c in range(len(PALETTE)) if c not in used]
+        allowed = [c for c in BASE if c not in used]
         if allowed:
             c = min(allowed, key=lambda c: (use[c], c))
         else:
-            c = min(range(len(PALETTE)), key=lambda c: (sum(1 for n in nb[s] if col.get(n) == c), use[c], c))
+            c = min(BASE, key=lambda c: (sum(1 for n in nb[s] if col.get(n) == c), use[c], c))
             warnings.append(("W007", next(v for v in vis if v["seq"] == s), "palette exhausted"))
         col[s] = c; use[c] += 1
     # utilisation
@@ -209,6 +252,9 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
                          utilization=r4(occ, t["slots"] * hdays)))
         if not any(x["team"] == t["id"] for x in plan):
             warnings.append(("W005", None, f'team "{t["id"]}" has no projects'))
+    for q in prods:
+        if not any(x["product"] == q["id"] for x in plan):
+            warnings.append(("W013", q, f'product "{q["name"]}" has no projects'))
     ds = lambda d: d.isoformat()
     mlist = []
     m0 = H0
@@ -240,7 +286,8 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
     for x in plan:
         c = col.get(x["seq"])
         projects.append({
-            "seq": x["seq"], "id": x["pid"], "name": x["name"], "team": x["team"], "size": x["size"], "weeks": x["weeks"],
+            "seq": x["seq"], "id": x["pid"], "name": x["name"], "team": x["team"], "product": x["product"],
+            "size": x["size"], "weeks": x["weeks"],
             "ongoing": x["ongoing"], "requested_start": None if x["auto"] else ds(x["req"]),
             "depends_on": x["deps"], "earliest_start": ds(x["earliest"]), "start": ds(x["start"]),
             "end": None if x["ongoing"] else ds(x["end"]),
@@ -259,7 +306,12 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         "rt_version": "1.0.0", "format": 1, "title": doc["roadmap"]["title"],
         "today": str(today) if today else None,
         "horizon": {"start": mstr(H0), "end": mstr(he), "start_date": ds(H0), "end_exclusive": ds(H1), "days": hdays},
-        "on_conflict": mode, "teams": tout, "projects": projects, "monthly_load": monthly, "warnings": wl,
+        "on_conflict": mode, "teams": tout,
+        "products": [{"id": q["id"], "name": q["name"], "domain": q["domain"], "owner": q["owner"],
+                      "color_index": pcol[q["id"]], "color_name": names[pcol[q["id"]]],
+                      "color_fill": PALETTE[pcol[q["id"]]][1],
+                      "projects": [x["seq"] for x in plan if x["product"] == q["id"]]} for q in prods],
+        "projects": projects, "monthly_load": monthly, "warnings": wl,
     }
     return out
 

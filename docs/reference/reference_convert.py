@@ -2,8 +2,8 @@
 
 Produced projects.minimal.expected.yaml and projects.pl.expected.yaml
 (requirements spec section 3.4 and 6.6). Implements the conversion rules:
-decoding, delimiter detection, header mapping, value parsing, team resolution,
-skeleton generation, base merge and YAML emission.
+decoding, delimiter detection, header mapping, value parsing, team and product
+resolution, skeleton generation, base merge and YAML emission.
 Does NOT run the rt validator on the result (rt convert does) and reports
 diagnostics only as plain tuples.
 
@@ -25,11 +25,12 @@ from pathlib import Path
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
-CANONICAL = ["name", "size", "team", "subdomain", "start", "ongoing", "depends_on", "id", "description", "color"]
+CANONICAL = ["name", "size", "team", "product", "subdomain", "start", "ongoing", "depends_on", "id", "description",
+             "color"]
 DEFAULT_SIZES = [("XS", 1), ("S", 2), ("M", 4), ("L", 8), ("XL", 13), ("XXL", 26)]
 TRUE = {"true", "yes", "y", "1", "x", "tak", "t"}
 FALSE = {"false", "no", "n", "0", "nie", ""}
-OUT_KEYS = ["id", "name", "team", "start", "size", "ongoing", "depends_on", "description", "color"]
+OUT_KEYS = ["id", "name", "team", "product", "start", "size", "ongoing", "depends_on", "description", "color"]
 
 
 def nfc(s: str) -> str:
@@ -130,6 +131,9 @@ def main() -> int:
         if canon == "subdomain" and a.base:
             diags.append(("W020", header_line, i + 1, f'column "{key}" is ignored with --base'))
             continue
+        if canon == "product" and not a.base:
+            diags.append(("W020", header_line, i + 1, f'column "{key}" is ignored without --base'))
+            continue
         cols[canon] = i
 
     def cell(rec: list[str], name: str) -> str:
@@ -145,6 +149,7 @@ def main() -> int:
         doc = yaml.load(Path(a.base).read_text(encoding="utf-8-sig"))
         size_labels = [str(k) for k in doc["sizes"]]
         teams = [(t["id"], t["name"]) for sd in doc["subdomains"] for t in sd["teams"]]
+        prods = [(q["id"], q["name"]) for q in doc.get("products") or []]
     else:
         sizes = DEFAULT_SIZES
         if a.sizes:
@@ -197,6 +202,12 @@ def main() -> int:
             p["id"] = cell(rec, "id")
         p["name"] = name
         p["team"] = team
+        product_raw = cell(rec, "product") if a.base else ""
+        if product_raw:
+            hit = [i for i, n in prods if i == product_raw] or [i for i, n in prods if n == product_raw]
+            if not hit:
+                diags.append(("E038", line, cols["product"] + 1, f'unknown product "{product_raw}"'))
+            p["product"] = hit[0] if hit else product_raw
         if start:
             p["start"] = start
         if size_raw:

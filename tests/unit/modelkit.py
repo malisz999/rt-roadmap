@@ -24,6 +24,7 @@ from rt.model.types import (
     DepRef,
     Mode,
     Model,
+    Product,
     Project,
     ResolvedModel,
     Settings,
@@ -38,7 +39,12 @@ FIXTURES = ROOT / "docs" / "fixtures"
 WE = FIXTURES / "scheduling-worked-example.yaml"
 DE = FIXTURES / "dependencies-example.yaml"
 EX = FIXTURES / "roadmap.example.yaml"
-PALETTE_NAMES = ("indigo", "green", "orange", "pink", "sky", "amber", "violet", "teal", "lime", "sand")
+PALETTE_NAMES = (
+    *("indigo", "green", "orange", "pink", "sky", "amber", "violet", "teal", "lime", "sand"),
+    *("blue", "cyan", "emerald", "yellow", "fuchsia", "purple", "stone", "sand-deep", "indigo-deep", "green-deep"),
+    *("orange-deep", "pink-deep", "sky-deep", "amber-deep", "violet-deep", "teal-deep", "lime-deep", "blue-deep"),
+    *("cyan-deep", "emerald-deep", "fuchsia-deep", "purple-deep"),
+)
 
 
 def _month(value: Any) -> Month:
@@ -150,9 +156,22 @@ def from_doc(
                 description=p.get("description"),
                 color=_color(p.get("color")),
                 pos=_pos(p, source),
+                product_id=p.get("product"),
             )
         )
-    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), source)
+    products = tuple(
+        Product(
+            id=q["id"],
+            name=str(q["name"]),
+            domain_id=q["domain"],
+            owner=q.get("owner"),
+            description=q.get("description"),
+            color=_color(q.get("color")),
+            pos=_pos(q, source),
+        )
+        for q in doc.get("products") or []
+    )
+    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), source, products)
     return resolve(model)
 
 
@@ -179,8 +198,10 @@ def make_model(
     today: date = date(2027, 1, 15),
     gap: int = 14,
     subdomains: Sequence[str] | None = None,
+    products: Sequence[tuple[str, str, str | None]] = (),
 ) -> ResolvedModel:
-    """teams: (id, subdomain, slots); projects: dicts with name, team, size|ongoing, start, deps (seqs), color."""
+    """teams: (id, subdomain, slots); projects: dicts with name, team, size|ongoing, start, deps (seqs), color,
+    product; products: (id, domain, color or None)."""
     sizes = sizes or {"S": 2, "M": 4, "L": 8}
     sd_ids = list(subdomains) if subdomains is not None else list(dict.fromkeys(t[1] for t in teams))
     settings = Settings(
@@ -222,11 +243,18 @@ def make_model(
                 description=None,
                 color=_color(color),
                 pos=Pos(100 + seq, 5, "<t>"),
+                product_id=spec.get("product"),
             )
         )
         deps[seq] = tuple(sorted(spec.get("deps", ())))
         weeks[seq] = None if ongoing else sizes[spec.get("size", "M")]
-    model = Model(settings, tuple(Size(k, v) for k, v in sizes.items()), sd_objs, team_objs, tuple(proj_objs), "<t>")
+    prod_objs = tuple(
+        Product(pid, pid.upper(), domain, None, None, _color(color), Pos(50 + i, 3, "<t>"))
+        for i, (pid, domain, color) in enumerate(products)
+    )
+    model = Model(
+        settings, tuple(Size(k, v) for k, v in sizes.items()), sd_objs, team_objs, tuple(proj_objs), "<t>", prod_objs
+    )
     return ResolvedModel(model, MappingProxyType(deps), MappingProxyType(weeks))
 
 
