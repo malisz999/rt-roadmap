@@ -215,7 +215,7 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
     planned = tuple(_project(pp) for pp in out["projects"])
     team_plans = tuple(_team_plan(tp, planned, h0, h1) for tp in out["teams"])
     return Plan(
-        rt_version="1.0.0",
+        rt_version="1.1.0",
         format=1,
         title=out["title"],
         today=settings.today,

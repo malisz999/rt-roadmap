@@ -524,7 +524,7 @@ rt ships as a wheel with a console script `rt`, and on each release also as one 
 ```toml
 [project]
 name = "rt-roadmap"
-version = "1.0.0"
+version = "1.1.0"
 requires-python = ">=3.12"
 dependencies = ["ruamel.yaml>=0.19.1,<0.20", "Jinja2>=3.1,<4"]
 

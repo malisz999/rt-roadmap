@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --locked
-      # Builds rt-<version>-<os>-<arch> and smoke-tests it on the three fixtures.
+      # Builds rt-<version>-<os>-<arch> and smoke-tests it on the four fixtures.
       - run: uv run --with pyinstaller python tools/build_binary.py --dist binaries
       - uses: actions/upload-artifact@v4
         with:

@@ -14,7 +14,12 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURES = ["scheduling-worked-example.yaml", "dependencies-example.yaml", "roadmap.example.yaml"]
+FIXTURES = [
+    "scheduling-worked-example.yaml",
+    "dependencies-example.yaml",
+    "products-example.yaml",
+    "roadmap.example.yaml",
+]
 
 
 def binary_name(version: str) -> str:
