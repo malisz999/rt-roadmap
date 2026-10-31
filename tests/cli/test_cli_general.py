@@ -26,11 +26,11 @@ from rtkit import (
 
 
 def test_version() -> None:
-    """RS 6.1: rt --version prints `rt 1.1.0`."""
+    """RS 6.1: rt --version prints `rt 1.2.0`."""
     r = run_rt(["--version"])
     assert r.code == 0, r.describe()
     text = (r.stdout.decode("utf-8") + r.stderr).strip()
-    assert text == "rt 1.1.0"
+    assert text == "rt 1.2.0"
 
 
 @pytest.mark.parametrize("command", [[], ["render"], ["validate"], ["convert"], ["init"], ["schema"]])

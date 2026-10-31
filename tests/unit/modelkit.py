@@ -11,6 +11,7 @@ import io
 import sys
 from collections.abc import Sequence
 from datetime import date
+from fractions import Fraction
 from pathlib import Path
 from types import MappingProxyType, ModuleType
 from typing import Any
@@ -19,6 +20,7 @@ from ruamel.yaml import YAML
 
 from rt.diagnostics import Pos
 from rt.model.types import (
+    Band,
     Capacity,
     ColorSpec,
     DepRef,
@@ -31,6 +33,7 @@ from rt.model.types import (
     Size,
     Subdomain,
     Team,
+    TeamNorms,
 )
 from rt.timeutil import Month, parse_date
 
@@ -171,7 +174,14 @@ def from_doc(
         )
         for q in doc.get("products") or []
     )
-    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), source, products)
+    norms = doc.get("team_norms") or {}
+    team_norms = TeamNorms(
+        **{
+            key: Band(*(Fraction(str(band[b])) if b in band else None for b in ("min", "max")))
+            for key, band in ((k, norms[k] or {}) for k in ("devs_per_slot", "devs_per_qa") if k in norms)
+        }
+    )
+    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), source, products, team_norms)
     return resolve(model)
 
 

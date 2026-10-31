@@ -1,3 +1,4 @@
+{% from "_indicator.html.j2" import chip %}
 <section class="rt-summary" aria-labelledby="rt-summary-title">
 <div class="rt-summary__head">
 <h2 class="rt-summary__title" id="rt-summary-title">Summary</h2>
@@ -24,4 +25,25 @@
 </tbody>
 </table>
 <p class="rt-summary__key">Share of slot-days in use per month: <span class="rt-key rt-bin-0">–</span> 0 % <span class="rt-key rt-bin-1"></span> 1–49 % <span class="rt-key rt-bin-2"></span> 50–79 % <span class="rt-key rt-bin-3"></span> 80–100 % <span class="rt-key rt-bin-4"></span> over 100 %</p>
+{% if page.summary.composition %}
+<div class="rt-summary__comp">
+<table class="rt-composition">
+<caption>Team composition</caption>
+<thead>
+<tr><th scope="col">Team</th><th scope="col">DEV</th><th scope="col">QA</th><th scope="col">Slots</th><th scope="col">DEV per slot</th><th scope="col">DEV per QA</th><th scope="col">Notes</th></tr>
+</thead>
+<tbody>
+{% for r in page.summary.composition.rows %}
+{% if r.kind == "subdomain" %}
+<tr class="rt-composition__group"><th scope="rowgroup" colspan="7"{{ L }}>{{ r.name }}</th></tr>
+{% else %}
+<tr class="rt-composition-row rt-composition-row--{{ r.kind }}{% if not r.team %} rt-composition__foot{% endif %}"{% if r.team %} data-team="{{ r.team }}"{% endif %}>
+<th scope="row"{% if r.user_text %}{{ L }}{% endif %}>{{ r.name }}</th><td>{{ r.developers }}</td><td>{{ r.testers }}</td><td>{{ r.slots }}</td>{% for c in r.cells %}<td>{% if c.mark %}{{ chip(c) }}{% else %}<span title="{{ c.title }}">{{ c.text }}</span>{% endif %}</td>{% endfor %}<td class="rt-composition__notes">{{ r.notes }}</td>
+</tr>
+{% endif %}
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endif %}
 </section>

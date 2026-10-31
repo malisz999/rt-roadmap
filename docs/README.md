@@ -13,7 +13,7 @@ roadmap/
 │   └── dev_test_loop.py          Orchestrator: runs developer <-> tester rounds per milestone (M1–M8)
 └── docs/
     ├── README.md                 This file
-    ├── requirements.md           Requirements specification (RS): what rt must do, AT-01…AT-65
+    ├── requirements.md           Requirements specification (RS): what rt must do, AT-01…AT-74
     ├── architecture.md           Architecture and design spec (ADS): stack, modules, milestones M1–M8
     ├── images/                   Diagrams referenced by the two specs
     │   ├── page-layout.svg               RS 7.2: page layout, worked example drawn to scale

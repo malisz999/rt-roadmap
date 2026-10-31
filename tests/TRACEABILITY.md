@@ -73,3 +73,12 @@ Validation catalogue: `tests/cli/test_catalogue_invalid.py` runs every `tests/fi
 | AT-63 | Legend has one rt-product chip per product in file order; tooltips … | `acceptance/test_at_products.py` | `test_at_63_legend_and_tooltips` |
 | AT-64 | product: written as the id (a name resolves too); unknown value → E… | `acceptance/test_at_products.py` | `test_at_64_convert_product_column` |
 | AT-65 | The schema accepts products and project.product, and still validate… | `acceptance/test_at_products.py` | `test_at_65_schema_accepts_products` |
+| AT-66 | Team values as in RS 7.13; only Cyberbezpieczeństwo flagged (no_qa) | `acceptance/test_at_team_indicators.py` | `test_at_66_team_values_and_flags` |
+| AT-67 | team_indicators: all, median, band and source for both indicators | `acceptance/test_at_team_indicators.py` | `test_at_67_roadmap_values` |
+| AT-68 | rt-team hooks equal the plan; red no QA; red ▲ / green ▼ chips with no… | `acceptance/test_at_team_indicators.py` | `test_at_68_label_chips_and_hooks` |
+| AT-69 | WE values without marks; DE and PE no_capacity; plans equal the exp… | `acceptance/test_at_team_indicators.py` | `test_at_69_other_fixtures` |
+| AT-70 | team_norms bands: Karty high, Ops low, Panel merchanta high; bounds… | `acceptance/test_at_team_indicators.py` | `test_at_70_team_norms` |
+| AT-71 | Exit 1; E012 at the max, E011, E002 with did you mean | `acceptance/test_at_team_indicators.py` | `test_at_71_invalid_norms` |
+| AT-72 | KPI tiles DEV per slot 2.2, DEV per QA 2.6; one rt-composition tabl… | `acceptance/test_at_team_indicators.py` | `test_at_72_summary`, `test_at_72_no_summary_no_table` |
+| AT-73 | Same diagnostics as before (no new warnings) | `acceptance/test_at_team_indicators.py` | `test_at_73_no_new_warnings` |
+| AT-74 | The schema accepts team_norms and still validates every fixture | `acceptance/test_at_team_indicators.py` | `test_at_74_schema` |

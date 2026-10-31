@@ -52,7 +52,7 @@ def test_render_default_output_next_to_input(fake_renderer: list[dict[str, Any]]
     assert code == 0, io.stderr
     assert io.files["plans/we.html"] == b"<html>Scheduling worked example</html>\n"
     assert io.stdout == b""
-    assert fake_renderer == [{"summary": True, "version": "1.1.0"}]
+    assert fake_renderer == [{"summary": True, "version": "1.2.0"}]
     assert io.stderr.splitlines()[-1] == "rt: wrote plans/we.html — 1 subdomain, 2 teams, 9 projects, 4 warnings"
 
 

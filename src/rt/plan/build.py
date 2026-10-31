@@ -11,22 +11,25 @@ from rt.color.adjacency import neighbours
 from rt.color.dsatur import assign_colors, product_keys
 from rt.color.palette import ColorKey, key_ref
 from rt.color.types import ColorRef
-from rt.decimalutil import ratio4
+from rt.decimalutil import frac4, ratio4
 from rt.diagnostics import Code, Collector, Diagnostic
 from rt.model.types import ResolvedModel
 from rt.plan.types import (
     HorizonOut,
+    IndicatorPlan,
     MonthlyLoad,
     Plan,
     PlannedProject,
     PlanWarning,
     ProductPlan,
     SubdomainLoad,
+    TeamIndicatorsPlan,
     TeamLoad,
     TeamPlan,
     VisibleOut,
 )
 from rt.schedule.horizon import anchor, resolve_horizon, visibility
+from rt.schedule.indicators import Indicators, IndicatorStats, team_indicators
 from rt.schedule.load import LoadRow, LoadTable, Ratio, monthly_load, utilisation
 from rt.schedule.scheduler import schedule
 from rt.schedule.types import (
@@ -141,6 +144,7 @@ def build_plan(
     product_colors: Mapping[str, ColorKey] | None = None,
 ) -> Plan:
     """Assemble the Plan from the computed parts; warnings are taken from the collector as they stand."""
+    ind = team_indicators(m.teams, m.model.team_norms)
     teams = tuple(
         TeamPlan(
             id=t.id,
@@ -148,6 +152,11 @@ def build_plan(
             slots=t.slots,
             overflow_lanes=max(0, s.lane_count.get(t.id, t.slots) - t.slots),
             utilization=ratio4(util[t.id].numerator, util[t.id].denominator),
+            developers=ind.teams[t.id].developers,
+            testers=ind.teams[t.id].testers,
+            devs_per_slot=frac4(ind.teams[t.id].devs_per_slot),
+            devs_per_qa=frac4(ind.teams[t.id].devs_per_qa),
+            indicator_flags=ind.teams[t.id].flags,
             utilization_exact=util[t.id].exact,
         )
         for t in m.teams
@@ -174,13 +183,24 @@ def build_plan(
         horizon=HorizonOut(h.start, h.end, h.h0, h.h1, h.days),
         on_conflict=settings.on_conflict,
         teams=teams,
+        team_indicators=indicators_plan(ind),
         products=products,
         projects=projects,
         monthly_load=monthly,
         warnings=tuple(PlanWarning(d.code.name, d.line, d.col, d.message) for d in warnings),
         model=m,
         diagnostics=tuple(warnings),
+        indicators=ind,
     )
+
+
+def _indicator(stats: IndicatorStats) -> IndicatorPlan:
+    return IndicatorPlan(frac4(stats.all), frac4(stats.median), frac4(stats.low), frac4(stats.high), stats.source)
+
+
+def indicators_plan(ind: Indicators) -> TeamIndicatorsPlan:
+    """Roadmap-wide indicator values for the plan JSON (RS PL-8)."""
+    return TeamIndicatorsPlan(_indicator(ind.devs_per_slot), _indicator(ind.devs_per_qa))
 
 
 def _product(m: ResolvedModel, product_id: str, key: ColorKey) -> ProductPlan:

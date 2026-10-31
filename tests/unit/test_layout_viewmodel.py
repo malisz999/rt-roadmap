@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 from decimal import Decimal
 from fractions import Fraction
+from typing import Any
 
 import plankit
 import pytest
@@ -138,8 +139,10 @@ def test_summary(we: PageVM) -> None:
         ("Delayed", "4"),
         ("Slots", "3"),
         ("People", "10"),
+        ("DEV per slot", "2.0"),
+        ("DEV per QA", "3.0"),
     ]
-    assert s.kpis[-1].note == "DEV 6 · PM 1 · BA 1 · QA 2"
+    assert s.kpis[-3].note == "DEV 6 · PM 1 · BA 1 · QA 2" and s.kpis[-1].note == "all teams"
     assert [r.kind for r in s.rows] == ["subdomain", "team", "team", "all"]
     assert [m.label for m in s.months] == ["Jan", "Feb", "Mar", "Apr", "May", "Jun"] and s.months[0].year == "2027"
     texts = {r.name: [c.text for c in r.cells] for r in s.rows}
@@ -359,3 +362,121 @@ def test_product_without_owner_and_with_custom_colour() -> None:
 
 def test_no_products_no_legend_row(we: PageVM) -> None:
     assert we.legend.products == ()
+
+
+# --- team indicators (RS 7.13) --------------------------------------------------------------------------------
+
+
+def _teams(page: PageVM) -> dict[str, Any]:
+    return {t.id: t for s in page.sections for t in s.teams}
+
+
+def test_indicator_chips_and_hooks() -> None:
+    page = page_of(plankit.plan_from_file(plankit.EX))
+    teams = _teams(page)
+    cards = teams["cards"]  # 3.0 is exactly median 2.0 + 50 %: not marked
+    assert [(c.text, c.mark, c.glyph, c.tone) for c in cards.indicators] == [
+        ("3.0 DEV/slot", "", "", ""),
+        ("3.0 DEV/QA", "", "", ""),
+    ]
+    assert cards.indicators[0].title == "DEV per slot 3.0 (median 2.0, normal 1.0–3.0)"
+    assert cards.indicators[1].title == "DEV per QA 3.0 (median 2.8, normal 1.4–4.1)"
+    assert dict(cards.data) == {
+        "data-devs-per-slot": "3.0000",
+        "data-devs-per-qa": "3.0000",
+        "data-indicator-flags": "",
+    }
+    sec = teams["sec"]  # one slot: short texts on the people line
+    assert sec.compact and [(c.text, c.mark, c.glyph, c.tone) for c in sec.indicators] == [
+        ("2.0/slot", "", "", ""),
+        ("no QA", "no_qa", "!", "bad"),
+    ]
+    assert sec.indicators[1].title == "No QA: 2 developers and no testers"
+    assert dict(sec.data)["data-devs-per-qa"] == "" and dict(sec.data)["data-indicator-flags"] == "no_qa"
+
+
+def test_composition_table_and_kpis() -> None:
+    page = page_of(plankit.plan_from_file(plankit.EX))
+    assert page.summary is not None and page.summary.composition is not None
+    rows = page.summary.composition.rows
+    assert [r.kind for r in rows][:3] == ["subdomain", "team", "team"]
+    assert [r.kind for r in rows][-3:] == ["all", "median", "band"]
+    team_rows = {r.team: r for r in rows if r.kind == "team"}
+    assert list(team_rows) == ["blik", "cards", "acq", "panel", "app", "ops", "sec"]
+    panel = team_rows["panel"]
+    assert (panel.developers, panel.testers, panel.slots, panel.notes) == ("4", "1", "2", "")
+    assert [(c.text, c.mark) for c in panel.cells] == [("2.0", ""), ("4.0", "")]
+    assert team_rows["sec"].notes == "no QA" and team_rows["sec"].cells[1].text == "no QA"
+    all_row, median_row, band = rows[-3:]
+    assert (all_row.developers, all_row.testers, all_row.slots) == ("31", "11", "14")
+    assert [c.text for c in all_row.cells] == ["2.2", "2.6"] and all_row.notes == ""
+    assert [c.text for c in median_row.cells] == ["2.0", "2.8"]
+    assert (band.name, [c.text for c in band.cells], band.notes) == (
+        "Normal range",
+        ["1.0–3.0", "1.4–4.1"],
+        "median ± 50 %",
+    )
+    kpis = {k.label: k.value for k in page.summary.kpis}
+    assert (kpis["DEV per slot"], kpis["DEV per QA"]) == ("2.2", "2.6")
+
+
+def test_indicator_texts_with_norms_and_without_capacity() -> None:
+    text = plankit.EX.read_text(encoding="utf-8").replace(
+        "\nsubdomains:",
+        "\nteam_norms:\n  devs_per_slot: { min: 2, max: 2.5 }\n  devs_per_qa: { max: 3 }\nsubdomains:",
+        1,
+    )
+    page = page_of(plankit.plan_from_text(text))
+    teams = _teams(page)
+    ops, cards, panel = teams["ops"], teams["cards"], teams["panel"]
+    assert ops.indicators[0].title == "DEV per slot 1.5 — low (better): below the norm 2.0"
+    assert (ops.indicators[0].mark, ops.indicators[0].glyph, ops.indicators[0].tone) == ("low", "▼", "good")
+    assert cards.indicators[0].title == "DEV per slot 3.0 — high (worse): above the norm 2.5"
+    assert (cards.indicators[0].glyph, cards.indicators[0].tone) == ("▲", "bad")
+    assert (panel.indicators[1].mark, panel.indicators[1].tone) == ("high", "bad")
+    assert teams["blik"].indicators[0].title == "DEV per slot 2.5 (norm 2.0–2.5)"
+    assert teams["blik"].indicators[1].title == "DEV per QA 2.5 (norm ≤ 3.0)"
+    assert page.summary is not None and page.summary.composition is not None
+    band = page.summary.composition.rows[-1]
+    assert (band.name, [c.text for c in band.cells], band.notes) == ("Norm", ["2.0–2.5", "≤ 3.0"], "team_norms")
+
+    de = page_of(plankit.plan_from_file(plankit.DE))
+    api = _teams(de)["api"]
+    assert [c.text for c in api.indicators] == ["–/slot", "–/QA"]
+    assert api.indicators[0].title == "DEV per slot: no capacity given for this team"
+    assert de.summary is not None and de.summary.composition is not None
+    rows = de.summary.composition.rows
+    assert [r.kind for r in rows][-2:] == ["all", "median"]  # no band row: nothing to compare
+    assert rows[-2].notes == "teams without capacity are left out" and rows[-2].developers == "–"
+    kpis = {k.label: k.value for k in de.summary.kpis}
+    assert kpis["DEV per slot"] == "–"
+
+
+def test_one_sided_and_empty_norms_and_plans_without_indicators() -> None:
+    text = plankit.EX.read_text(encoding="utf-8").replace(
+        "\nsubdomains:", "\nteam_norms:\n  devs_per_slot: { min: 2 }\n  devs_per_qa: {}\nsubdomains:", 1
+    )
+    plan = plankit.plan_from_text(text)
+    page = page_of(dataclasses.replace(plan, indicators=None))  # computed from the model instead
+    blik = _teams(page)["blik"]
+    assert blik.indicators[0].title == "DEV per slot 2.5 (norm ≥ 2.0)"
+    assert blik.indicators[1].title == "DEV per QA 2.5 (no norm bounds)"
+    assert page.summary is not None and page.summary.composition is not None
+    band = page.summary.composition.rows[-1]
+    assert [c.text for c in band.cells] == ["≥ 2.0", "–"]
+
+
+def test_median_marks_say_better_or_worse() -> None:
+    text = plankit.WE.read_text(encoding="utf-8").replace(
+        "      - id: beta\n",
+        "      - id: gamma\n        name: Gamma\n        parallel_projects: 1\n"
+        "        capacity: { developers: 9, testers: 1 }\n      - id: beta\n",
+    )
+    page = page_of(plankit.plan_from_text(text))
+    teams = _teams(page)
+    # DEV per slot: alpha 2, gamma 9, beta 2 -> median 2, band 1-3: gamma high (worse)
+    chip = teams["gamma"].indicators[0]
+    assert (chip.text, chip.tone) == ("9.0/slot", "bad")
+    assert chip.title == "DEV per slot 9.0 — high (worse): above 3.0 (median 2.0 + 50 %)"
+    # DEV per QA: alpha 4, gamma 9, beta 2 -> median 4, band 2-6: gamma high (worse), beta on the edge
+    assert teams["gamma"].indicators[1].tone == "bad" and teams["beta"].indicators[1].tone == ""

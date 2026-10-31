@@ -71,6 +71,22 @@ projects:
 
 Projects without `product` are coloured as before. A project's own `color` wins over its product's colour.
 
+## Team indicators
+
+Each team label shows two ratios that make team composition comparable: **DEV per slot** (developers ÷
+`parallel_projects`) and **DEV per QA** (developers ÷ testers), both from `capacity`. For both, higher is worse: a value more
+than 50 % above the median of all teams is marked red ▲, more than 50 % below it green ▼, and a team with
+developers but no testers shows a red `! no QA`.
+Write your own targets instead of the median rule with an optional block:
+
+```yaml
+team_norms:
+  devs_per_slot: { min: 2, max: 3 }
+  devs_per_qa: { max: 4 }
+```
+
+`--summary` adds a "Team composition" table; the plan JSON carries the values in `teams[]` and `team_indicators`.
+
 `rt schema` prints the JSON Schema; add `# yaml-language-server: $schema=./roadmap.schema.json` at the top of
 your file for completion and validation in editors such as VS Code.
 
@@ -139,5 +155,5 @@ uv run pytest -q -m slow          # performance tests (RS NF-3, NF-11)
 ```
 
 Tests: `tests/unit` and `tests/property` (developer), `tests/acceptance`, `tests/cli`, `tests/html`,
-`tests/golden` (black-box acceptance suite, one test per AT-01 … AT-65). `tools/reference_plan.py` and
+`tests/golden` (black-box acceptance suite, one test per AT-01 … AT-74). `tools/reference_plan.py` and
 `tools/reference_convert.py` are the differential oracles; `tools/gen_stress.py` generates the stress roadmap.

@@ -39,3 +39,8 @@ reformatted tests/unit/test_io_streams.py (formatting only, no semantic change).
   catalogue fixtures e024, e025, e038, e039, w013, w014; traceability range now AT-01 … AT-65.
 - Changed: AT-10 allows product colours (10–31) and same-product neighbours; AT-19/AT-20 expect the EX W001 at
   line 252 (EX gained a `products` block).
+
+## CR-2 Team indicators (31 Oct 2026)
+- New: `tests/acceptance/test_at_team_indicators.py` (AT-66 … AT-74); traceability range AT-01 … AT-74.
+- Changed: EX gained a commented `team_norms` example, so its W001 is now at line 259 (AT-19, AT-20);
+  products-example AT-56 asserts `products` follows `team_indicators`.

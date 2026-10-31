@@ -50,7 +50,16 @@ PALETTE_NAMES: tuple[str, ...] = (
     "purple-deep",
 )
 
-TOP_KEYS: tuple[str, ...] = ("version", "roadmap", "sizes", "scheduling", "subdomains", "products", "projects")
+TOP_KEYS: tuple[str, ...] = (
+    "version",
+    "roadmap",
+    "sizes",
+    "scheduling",
+    "team_norms",
+    "subdomains",
+    "products",
+    "projects",
+)
 ROADMAP_KEYS: tuple[str, ...] = ("title", "subtitle", "horizon", "today", "month_width", "content_language")
 HORIZON_KEYS: tuple[str, ...] = ("start", "end")
 SCHEDULING_KEYS: tuple[str, ...] = ("on_conflict", "adjacency_gap_days")
@@ -58,6 +67,8 @@ SUBDOMAIN_KEYS: tuple[str, ...] = ("id", "name", "description", "teams")
 TEAM_KEYS: tuple[str, ...] = ("id", "name", "parallel_projects", "capacity")
 CAPACITY_KEYS: tuple[str, ...] = ("developers", "product_managers", "analysts", "testers")
 PRODUCT_KEYS: tuple[str, ...] = ("id", "name", "domain", "owner", "description", "color")
+TEAM_NORMS_KEYS: tuple[str, ...] = ("devs_per_slot", "devs_per_qa")  # RS 7.13 team indicators
+BAND_KEYS: tuple[str, ...] = ("min", "max")
 PROJECT_KEYS: tuple[str, ...] = (
     "id",
     "name",
@@ -90,6 +101,7 @@ WEEKS = (1, 520)
 GAP_DAYS = (0, 90)
 DEFAULT_GAP_DAYS = 14
 MAX_HORIZON_MONTHS = 120
+NORM_RANGE = (0, 999)  # team_norms bounds
 
 
 def is_int(value: Any) -> bool:
@@ -124,6 +136,13 @@ def describe(value: Any) -> str:
     if is_list(value):
         return "a list"
     return type(value).__name__
+
+
+def describe_number(value: Any) -> str:
+    """An exact bound as written in messages: `2`, `2.5`."""
+    if hasattr(value, "denominator") and value.denominator == 1:
+        return str(value.numerator)
+    return str(float(value))
 
 
 def as_text(value: Any) -> str:

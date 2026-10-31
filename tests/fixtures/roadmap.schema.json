@@ -97,6 +97,21 @@
         }
       }
     },
+    "team_norms": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional roadmap-wide norms for the team indicators. A team value outside a band is marked; without a band it is compared with the median of all teams (± 33 %).",
+      "properties": {
+        "devs_per_slot": {
+          "$ref": "#/$defs/band",
+          "description": "Developers per parallel slot (capacity.developers ÷ parallel_projects)."
+        },
+        "devs_per_qa": {
+          "$ref": "#/$defs/band",
+          "description": "Developers per tester (capacity.developers ÷ capacity.testers)."
+        }
+      }
+    },
     "subdomains": {
       "type": "array",
       "minItems": 1,
@@ -165,6 +180,24 @@
       "minimum": 0,
       "maximum": 999,
       "default": 0
+    },
+    "band": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 999,
+          "description": "Values below are marked low."
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 999,
+          "description": "Values above are marked high."
+        }
+      }
     },
     "color": {
       "anyOf": [

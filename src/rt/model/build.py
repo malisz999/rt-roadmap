@@ -8,8 +8,10 @@ their CSV line and field number, and messages about a CSV cell end with ` [colum
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from fractions import Fraction
 from types import MappingProxyType
 from typing import Any, Final
 
@@ -17,6 +19,7 @@ from rt.diagnostics import Code, Collector, Pos, suggest
 from rt.io.rawdoc import RawDoc
 from rt.model import fields as F
 from rt.model.types import (
+    Band,
     Capacity,
     ColorSpec,
     DepRef,
@@ -29,6 +32,7 @@ from rt.model.types import (
     Size,
     Subdomain,
     Team,
+    TeamNorms,
 )
 from rt.timeutil import Month, months_between, parse_date
 
@@ -210,6 +214,7 @@ class _Builder:
         self.unknown_keys(top, F.TOP_KEYS)
         settings = self.settings(top, overrides)
         sizes = self.sizes(top)
+        norms = self.team_norms(top)
         subdomains, teams = self.subdomains(top)
         products = self.products(top)
         projects = self.projects(top)
@@ -221,6 +226,7 @@ class _Builder:
             projects=projects,
             source=raw.source,
             products=products,
+            team_norms=norms,
         )
 
     def version(self, top: _Ent) -> bool:
@@ -327,6 +333,45 @@ class _Builder:
             adjacency_gap_days=gap if gap is not None else F.DEFAULT_GAP_DAYS,
             pos=settings_pos,
         )
+
+    def team_norms(self, top: _Ent) -> TeamNorms:
+        """The optional roadmap-wide `team_norms` block (RS 3.2, 7.13); invalid bounds are reported and dropped."""
+        node = self.mapping(top, "team_norms")
+        if node is None:
+            return TeamNorms()
+        ent = _Ent(node, where="team_norms", missing_where="team_norms")
+        self.unknown_keys(ent, F.TEAM_NORMS_KEYS)
+        bands: dict[str, Band] = {}
+        for key in F.TEAM_NORMS_KEYS:
+            band_node = self.mapping(ent, key)
+            if band_node is None:
+                continue
+            where = f"team_norms.{key}"
+            band = _Ent(band_node, where=where, missing_where=where)
+            self.unknown_keys(band, F.BAND_KEYS)
+            low, high = self.bound(band, "min"), self.bound(band, "max")
+            if low is not None and high is not None and low > high:
+                self.fail(
+                    band, Code.E012, "max", detail=f'"{where}": max must not be below min ({F.describe_number(low)})'
+                )
+                high = None
+            bands[key] = Band(low, high)
+        return TeamNorms(**bands)
+
+    def bound(self, ent: _Ent, key: str) -> Fraction | None:
+        """A norm bound: an integer or decimal number in NORM_RANGE, kept exact as written."""
+        value = self.get(ent, key)
+        if value is MISSING:
+            return None
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            self.fail(ent, Code.E011, key, detail=f'"{key}" must be a number, got {F.describe(value)}')
+            return None
+        low, high = F.NORM_RANGE
+        exact = Fraction(str(value)) if math.isfinite(value) else None  # .inf / .nan are out of range
+        if exact is None or not low <= exact <= high:
+            self.fail(ent, Code.E012, key, detail=f'"{key}" must be {low}–{high}, got {value}')
+            return None
+        return exact
 
     def sizes(self, top: _Ent) -> tuple[Size, ...]:
         """Every size label that was written, in order; labels or weeks that fail are reported but kept, so

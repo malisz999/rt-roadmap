@@ -12,10 +12,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 from fractions import Fraction
 
-from rt.decimalutil import fmt4, half_up, pct, px
+from rt.decimalutil import fmt1, fmt4, frac4, half_up, pct, px
 from rt.layout import geometry as g
 from rt.model.types import Capacity, Mode, Subdomain, Team
 from rt.plan.types import Plan, PlannedProject, ProductPlan, TeamPlan
+from rt.schedule import indicators as ti
 from rt.schedule.types import (
     CLIPPED_LEFT,
     CLIPPED_RIGHT,
@@ -30,7 +31,10 @@ from rt.timeutil import Month, fmt_date, fmt_day_month
 __all__ = [
     "BadgeVM",
     "BarVM",
+    "CompositionRowVM",
+    "CompositionVM",
     "DepVM",
+    "IndicatorVM",
     "KpiVM",
     "LaneVM",
     "LeadVM",
@@ -125,6 +129,18 @@ class BadgeVM:
 
 
 @dataclass(frozen=True, slots=True)
+class IndicatorVM:
+    """One team indicator chip (RS 7.13): `2.5 DEV/slot`; high and no QA are bad (red), low is good (green)."""
+
+    kind: str  # devs_per_slot | devs_per_qa
+    text: str
+    mark: str  # low | high | no_qa | ""
+    glyph: str  # ▲ ▼ ! or ""
+    title: str
+    tone: str = ""  # bad | good | "" (for both indicators, higher is worse)
+
+
+@dataclass(frozen=True, slots=True)
 class TeamVM:
     id: str
     name: str
@@ -139,6 +155,8 @@ class TeamVM:
     height: str
     compact: bool  # one regular slot: the label sits at the top with tight spacing to fit 56 px
     lanes: tuple[LaneVM, ...]
+    indicators: tuple[IndicatorVM, ...] = ()  # compact teams: short texts, shown on the people line
+    data: tuple[tuple[str, str], ...] = ()  # indicator hooks (RS 7.10)
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,10 +263,31 @@ class MonthHeadVM:
 
 
 @dataclass(frozen=True, slots=True)
+class CompositionRowVM:
+    kind: str  # subdomain | team | all | median | band
+    name: str
+    user_text: bool
+    team: str  # team id for team rows, else ""
+    developers: str
+    testers: str
+    slots: str
+    cells: tuple[IndicatorVM, ...]  # DEV per slot, DEV per QA
+    notes: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompositionVM:
+    """The "Team composition" table of the summary (RS 7.13)."""
+
+    rows: tuple[CompositionRowVM, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SummaryVM:
     kpis: tuple[KpiVM, ...]
     months: tuple[MonthHeadVM, ...]
     rows: tuple[LoadRowVM, ...]
+    composition: CompositionVM | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -488,7 +527,7 @@ def _section(
                     bars=bars,
                 )
             )
-        team_vms.append(_team(t, team_plans.get(t.id), lanes))
+        team_vms.append(_team(t, team_plans.get(t.id), lanes, indicators_of(plan)))
 
     n_projects = len(projects)
     return SectionVM(
@@ -521,7 +560,7 @@ def _role_counts(c: Capacity) -> tuple[int, int, int, int]:
     return (c.developers, c.product_managers, c.analysts, c.testers)
 
 
-def _team(t: Team, tp: TeamPlan | None, lanes: list[LaneVM]) -> TeamVM:
+def _team(t: Team, tp: TeamPlan | None, lanes: list[LaneVM], ind: ti.Indicators | None = None) -> TeamVM:
     counts = _role_counts(t.capacity)
     badges = tuple(BadgeVM(role, n, n == 0, title) for (role, title), n in zip(_ROLES, counts, strict=True))
     if tp is not None:
@@ -545,7 +584,196 @@ def _team(t: Team, tp: TeamPlan | None, lanes: list[LaneVM]) -> TeamVM:
         height=str(g.team_height(len(lanes))),
         compact=t.slots == 1,
         lanes=tuple(lanes),
+        indicators=_chips(ind, t.id, short=t.slots == 1) if ind is not None else (),
+        data=_indicator_data(ind.teams[t.id]) if ind is not None and t.id in ind.teams else (),
     )
+
+
+# --------------------------------------------------------------------------------------------- team indicators
+
+_IND_NAME: Mapping[str, str] = {ti.DEVS_PER_SLOT: "DEV per slot", ti.DEVS_PER_QA: "DEV per QA"}
+_IND_UNIT: Mapping[str, str] = {ti.DEVS_PER_SLOT: "DEV/slot", ti.DEVS_PER_QA: "DEV/QA"}
+_IND_SHORT: Mapping[str, str] = {ti.DEVS_PER_SLOT: "/slot", ti.DEVS_PER_QA: "/QA"}
+_GLYPH: Mapping[str, str] = {ti.LOW: "▼", ti.HIGH: "▲", ti.NO_QA: "!"}
+_TONE: Mapping[str, str] = {ti.LOW: "good", ti.HIGH: "bad", ti.NO_QA: "bad"}
+_TONE_WORD: Mapping[str, str] = {ti.LOW: "low (better)", ti.HIGH: "high (worse)"}
+_FLAG_NOTE: Mapping[str, str] = {
+    "devs_per_slot_high": "DEV per slot high (worse)",
+    "devs_per_slot_low": "DEV per slot low (better)",
+    "devs_per_qa_high": "DEV per QA high (worse)",
+    "devs_per_qa_low": "DEV per QA low (better)",
+    ti.NO_QA: "no QA",
+    ti.NO_CAPACITY: "no capacity given",
+}
+
+
+def indicators_of(plan: Plan) -> ti.Indicators:
+    """The plan's exact indicators; computed from the model for plans assembled without them."""
+    if plan.indicators is not None:
+        return plan.indicators
+    return ti.team_indicators(plan.model.teams, plan.model.model.team_norms)
+
+
+def _range(stats: ti.IndicatorStats) -> str:
+    """The band in words: `median 2.0, normal 1.3–2.7`, `norm 2.0–2.5`, `norm ≤ 3.0`."""
+    if stats.source == ti.SOURCE_NORM:
+        if stats.low is not None and stats.high is not None:
+            return f"norm {fmt1(stats.low)}–{fmt1(stats.high)}"
+        if stats.low is not None:
+            return f"norm ≥ {fmt1(stats.low)}"
+        return f"norm ≤ {fmt1(stats.high)}" if stats.high is not None else "no norm bounds"
+    if (
+        stats.source == ti.SOURCE_MEDIAN
+        and stats.median is not None
+        and stats.low is not None
+        and stats.high is not None
+    ):
+        return f"median {fmt1(stats.median)}, normal {fmt1(stats.low)}–{fmt1(stats.high)}"
+    return "fewer than 3 teams to compare" if stats.median is not None else "no team to compare"
+
+
+def _why(mark: str, stats: ti.IndicatorStats) -> str:
+    """`high (worse): above 3.0 (median 2.0 + 50 %)` or `low (better): below the norm 2.0`."""
+    if mark == ti.HIGH:
+        limit, side, sign = stats.high, "above", "+"
+    else:
+        limit, side, sign = stats.low, "below", "−"
+    assert limit is not None
+    word = _TONE_WORD[mark]
+    if stats.source == ti.SOURCE_NORM:
+        return f"{word}: {side} the norm {fmt1(limit)}"
+    assert stats.median is not None
+    return f"{word}: {side} {fmt1(limit)} (median {fmt1(stats.median)} {sign} 50 %)"
+
+
+def _chip(ind: ti.Indicators, team: ti.TeamIndicators, kind: str, short: bool, unit: bool = True) -> IndicatorVM:
+    name = _IND_NAME[kind]
+    suffix = (_IND_SHORT[kind] if short else f" {_IND_UNIT[kind]}") if unit else ""
+    value = team.value(kind)
+    if team.developers is None:
+        return IndicatorVM(kind, f"–{suffix}", "", "", f"{name}: no capacity given for this team")
+    if kind == ti.DEVS_PER_QA and value is None:
+        title = f"No QA: {plural(team.developers, 'developer', 'developers')} and no testers"
+        mark = ti.NO_QA if ti.NO_QA in team.flags else ""
+        return IndicatorVM(kind, "no QA", mark, _GLYPH.get(mark, ""), title, _TONE.get(mark, ""))
+    assert value is not None
+    stats = ind.stats(kind)
+    mark = team.marks.get(kind, "")
+    shown = fmt1(value)
+    detail = _why(mark, stats) if mark else _range(stats)
+    title = f"{name} {shown} — {detail}" if mark else f"{name} {shown} ({detail})"
+    return IndicatorVM(kind, f"{shown}{suffix}", mark, _GLYPH.get(mark, ""), title, _TONE.get(mark, ""))
+
+
+def _chips(ind: ti.Indicators, team_id: str, short: bool) -> tuple[IndicatorVM, ...]:
+    team = ind.teams.get(team_id)
+    if team is None:  # pragma: no cover - every team has indicators
+        return ()
+    return tuple(_chip(ind, team, kind, short) for kind in ti.INDICATORS)
+
+
+def _indicator_data(team: ti.TeamIndicators) -> tuple[tuple[str, str], ...]:
+    def f4(v: Fraction | None) -> str:
+        rounded = frac4(v)
+        return "" if rounded is None else fmt4(rounded)
+
+    return (
+        ("data-devs-per-slot", f4(team.devs_per_slot)),
+        ("data-devs-per-qa", f4(team.devs_per_qa)),
+        ("data-indicator-flags", " ".join(team.flags)),
+    )
+
+
+def _composition(plan: Plan) -> CompositionVM:
+    model = plan.model
+    ind = indicators_of(plan)
+    teams_by_id = {t.id: t for t in model.teams}
+    rows: list[CompositionRowVM] = []
+    for sub in model.subdomains:
+        rows.append(CompositionRowVM("subdomain", sub.name, True, "", "", "", "", (), ""))
+        for tid in sub.team_ids:
+            t, team = teams_by_id.get(tid), ind.teams.get(tid)
+            if t is None or team is None:
+                continue
+            cells = tuple(_chip(ind, team, kind, short=False, unit=False) for kind in ti.INDICATORS)
+            notes = ", ".join(_FLAG_NOTE[f] for f in sorted(team.flags, key=list(_FLAG_NOTE).index))
+            rows.append(
+                CompositionRowVM(
+                    "team",
+                    t.name,
+                    True,
+                    t.id,
+                    "–" if team.developers is None else str(team.developers),
+                    "–" if team.testers is None else str(team.testers),
+                    str(t.slots),
+                    cells,
+                    notes,
+                )
+            )
+    measured = [t for t in model.teams if t.capacity_given]
+    dev = sum(t.capacity.developers for t in measured)
+    qa = sum(t.capacity.testers for t in measured)
+    slots = sum(t.slots for t in measured)
+
+    def plain(kind: str, value: Fraction | None, title: str) -> IndicatorVM:
+        return IndicatorVM(kind, "–" if value is None else fmt1(value), "", "", title)
+
+    stats = [ind.stats(kind) for kind in ti.INDICATORS]
+    rows.append(
+        CompositionRowVM(
+            "all",
+            "All teams",
+            False,
+            "",
+            str(dev) if measured else "–",
+            str(qa) if measured else "–",
+            str(slots) if measured else "–",
+            tuple(plain(k, s.all, f"{_IND_NAME[k]} over all teams") for k, s in zip(ti.INDICATORS, stats, strict=True)),
+            "teams without capacity are left out" if len(measured) < len(model.teams) else "",
+        )
+    )
+    rows.append(
+        CompositionRowVM(
+            "median",
+            "Median",
+            False,
+            "",
+            "",
+            "",
+            "",
+            tuple(plain(k, s.median, f"Median {_IND_NAME[k]}") for k, s in zip(ti.INDICATORS, stats, strict=True)),
+            "",
+        )
+    )
+    if any(s.source is not None for s in stats):
+        norm = any(s.source == ti.SOURCE_NORM for s in stats)
+        band_cells = []
+        for k, st in zip(ti.INDICATORS, stats, strict=True):
+            if st.source is None:
+                text = "–"
+            elif st.low is not None and st.high is not None:
+                text = f"{fmt1(st.low)}–{fmt1(st.high)}"
+            elif st.low is not None:
+                text = f"≥ {fmt1(st.low)}"
+            elif st.high is not None:
+                text = f"≤ {fmt1(st.high)}"
+            else:
+                text = "–"
+            band_cells.append(IndicatorVM(k, text, "", "", f"{_IND_NAME[k]}: {_range(st)}"))
+        rows.append(
+            CompositionRowVM(
+                "band",
+                "Norm" if norm else "Normal range",
+                False,
+                "",
+                "",
+                "",
+                "",
+                tuple(band_cells),
+                "team_norms" if norm else "median ± 50 %",
+            )
+        )
+    return CompositionVM(tuple(rows))
 
 
 # --------------------------------------------------------------------------------------------- bars
@@ -716,6 +944,10 @@ def _summary(plan: Plan, scale: g.Scale) -> SummaryVM:
         kpis.append(KpiVM("Over capacity", str(sum(1 for p in projects if OVER_CAPACITY in p.flags)), None))
     kpis.append(KpiVM("Slots", str(sum(t.slots for t in model.teams)), None))
     kpis.append(KpiVM("People", str(sum(totals)), people_note))
+    ind = indicators_of(plan)
+    for kind in ti.INDICATORS:
+        value = ind.stats(kind).all
+        kpis.append(KpiVM(_IND_NAME[kind], "–" if value is None else fmt1(value), "all teams"))
 
     ml = plan.monthly_load
     months = ml.months
@@ -751,7 +983,7 @@ def _summary(plan: Plan, scale: g.Scale) -> SummaryVM:
             _cells("All teams", "all", "all", months, ml.total, ml.total_occupied, ml.total_capacity),
         )
     )
-    return SummaryVM(tuple(kpis), heads, tuple(rows))
+    return SummaryVM(tuple(kpis), heads, tuple(rows), _composition(plan))
 
 
 def _cells(

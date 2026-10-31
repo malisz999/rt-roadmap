@@ -135,6 +135,7 @@ def test_to_json_format() -> None:
         "horizon",
         "on_conflict",
         "teams",
+        "team_indicators",
         "products",
         "projects",
         "monthly_load",

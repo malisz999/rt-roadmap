@@ -10,12 +10,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
+from fractions import Fraction
 from types import MappingProxyType
 
 from rt.diagnostics import Pos
 from rt.timeutil import Month
 
 __all__ = [
+    "Band",
     "Capacity",
     "ColorSpec",
     "DepRef",
@@ -31,6 +33,7 @@ __all__ = [
     "Size",
     "Subdomain",
     "Team",
+    "TeamNorms",
 ]
 
 EMPTY_POS: Mapping[str, Pos] = MappingProxyType({})
@@ -73,6 +76,22 @@ class Settings:
     on_conflict: Mode
     adjacency_gap_days: int
     pos: Pos | None = None  # position of the `roadmap` key, for whole-roadmap diagnostics
+
+
+@dataclass(frozen=True, slots=True)
+class Band:
+    """A norm for one team indicator (RS 7.13): values below `min` are low, above `max` high; None = unchecked."""
+
+    min: Fraction | None = None
+    max: Fraction | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TeamNorms:
+    """`team_norms`: roadmap-wide bands; an indicator without a band is compared with the median instead."""
+
+    devs_per_slot: Band | None = None
+    devs_per_qa: Band | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +203,7 @@ class Model:
     projects: tuple[Project, ...]  # file order; projects[i].seq == i + 1
     source: str = "<input>"
     products: tuple[Product, ...] = ()  # file order = legend order
+    team_norms: TeamNorms = TeamNorms()
 
     def team(self, team_id: str) -> Team:
         for t in self.teams:

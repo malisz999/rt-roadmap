@@ -17,23 +17,60 @@
       "subdomain": "channels",
       "slots": 2,
       "overflow_lanes": 0,
-      "utilization": 0.3094
+      "utilization": 0.3094,
+      "developers": null,
+      "testers": null,
+      "devs_per_slot": null,
+      "devs_per_qa": null,
+      "indicator_flags": [
+        "no_capacity"
+      ]
     },
     {
       "id": "app",
       "subdomain": "channels",
       "slots": 1,
       "overflow_lanes": 0,
-      "utilization": 0.232
+      "utilization": 0.232,
+      "developers": null,
+      "testers": null,
+      "devs_per_slot": null,
+      "devs_per_qa": null,
+      "indicator_flags": [
+        "no_capacity"
+      ]
     },
     {
       "id": "portal",
       "subdomain": "merchant",
       "slots": 2,
       "overflow_lanes": 0,
-      "utilization": 0.4834
+      "utilization": 0.4834,
+      "developers": null,
+      "testers": null,
+      "devs_per_slot": null,
+      "devs_per_qa": null,
+      "indicator_flags": [
+        "no_capacity"
+      ]
     }
   ],
+  "team_indicators": {
+    "devs_per_slot": {
+      "all": null,
+      "median": null,
+      "low": null,
+      "high": null,
+      "source": null
+    },
+    "devs_per_qa": {
+      "all": null,
+      "median": null,
+      "low": null,
+      "high": null,
+      "source": null
+    }
+  },
   "products": [
     {
       "id": "blik",

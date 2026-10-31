@@ -7,7 +7,8 @@ dependencies-example.expected.json and products-example.expected.json
 Implements: scheduling in delay and overflow modes, auto-start anchor,
 finish-to-start dependencies, automatic horizon, visibility and flags,
 adjacency, product colours and DSATUR colouring (palette names only),
-utilisation and monthly load with half-up rounding,
+utilisation and monthly load with half-up rounding, team indicators
+(DEV per slot, DEV per QA, median +/- 50 % or team_norms bands),
 W001-W005/W007/W009/W011/W013/W014 warnings.
 Does NOT implement: input validation (assumes a valid file), error mode,
 custom hex colours, W006/W008-W010/W012, horizon cap.
@@ -21,6 +22,8 @@ from decimal import Decimal, ROUND_HALF_UP
 def r4(n, d):
     f = Fraction(n, d)
     return float((Decimal(f.numerator) / Decimal(f.denominator)).quantize(Decimal("0.0001"), ROUND_HALF_UP))
+def r4f(f):
+    return None if f is None else r4(f.numerator, f.denominator)
 from ruamel.yaml import YAML
 
 D = dt.date
@@ -67,7 +70,10 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
     teams, lane_order = [], []
     for sd in doc["subdomains"]:
         for t in sd["teams"]:
-            teams.append(dict(id=t["id"], subdomain=sd["id"], slots=t["parallel_projects"]))
+            cap = t.get("capacity")
+            teams.append(dict(id=t["id"], subdomain=sd["id"], slots=t["parallel_projects"],
+                              devs=None if cap is None else cap.get("developers", 0),
+                              qa=None if cap is None else cap.get("testers", 0)))
     tmap = {t["id"]: t for t in teams}
     lanes = {t["id"]: [[] for _ in range(t["slots"])] for t in teams}
     warnings, plan = [], []
@@ -250,6 +256,40 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         tout.append(dict(id=t["id"], subdomain=t["subdomain"], slots=t["slots"],
                          overflow_lanes=len(lanes[t["id"]]) - t["slots"],
                          utilization=r4(occ, t["slots"] * hdays)))
+    # team indicators: developers per slot and per QA, marked against team_norms or median +/- 50 %
+    measured = [t for t in teams if t["devs"] is not None]
+    for t in teams:
+        t["dps"] = None if t["devs"] is None else Fraction(t["devs"], t["slots"])
+        t["dpq"] = None if t["devs"] is None or not t["qa"] else Fraction(t["devs"], t["qa"])
+    norms = doc.get("team_norms") or {}
+    def stats(key, vals, num, den):
+        vals = sorted(vals)
+        med = None if not vals else (vals[len(vals) // 2] if len(vals) % 2 else (vals[len(vals) // 2 - 1] + vals[len(vals) // 2]) / 2)
+        if key in norms:
+            nb = norms[key] or {}
+            lo = Fraction(str(nb["min"])) if "min" in nb else None
+            hi = Fraction(str(nb["max"])) if "max" in nb else None
+            src = "norm"
+        elif len(vals) >= 3:
+            lo, hi, src = med * Fraction(1, 2), med * Fraction(3, 2), "median"
+        else:
+            lo = hi = src = None
+        return dict(all=Fraction(num, den) if den else None, median=med, low=lo, high=hi, source=src)
+    ind = {
+        "devs_per_slot": stats("devs_per_slot", [t["dps"] for t in measured], sum(t["devs"] for t in measured), sum(t["slots"] for t in measured)),
+        "devs_per_qa": stats("devs_per_qa", [t["dpq"] for t in measured if t["dpq"] is not None],
+                             sum(t["devs"] for t in measured if t["qa"]), sum(t["qa"] for t in measured if t["qa"])),
+    }
+    for t, out_t in zip(teams, tout):
+        flags = []
+        for key, v in (("devs_per_slot", t["dps"]), ("devs_per_qa", t["dpq"])):
+            b = ind[key]
+            if v is not None and b["low"] is not None and v < b["low"]: flags.append(key + "_low")
+            if v is not None and b["high"] is not None and v > b["high"]: flags.append(key + "_high")
+        if t["devs"] is None: flags.append("no_capacity")
+        elif t["devs"] > 0 and not t["qa"]: flags.append("no_qa")
+        out_t.update(developers=t["devs"], testers=t["qa"], devs_per_slot=r4f(t["dps"]), devs_per_qa=r4f(t["dpq"]),
+                     indicator_flags=sorted(flags))
         if not any(x["team"] == t["id"] for x in plan):
             warnings.append(("W005", None, f'team "{t["id"]}" has no projects'))
     for q in prods:
@@ -307,6 +347,8 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         "today": str(today) if today else None,
         "horizon": {"start": mstr(H0), "end": mstr(he), "start_date": ds(H0), "end_exclusive": ds(H1), "days": hdays},
         "on_conflict": mode, "teams": tout,
+        "team_indicators": {k: {"all": r4f(v["all"]), "median": r4f(v["median"]), "low": r4f(v["low"]),
+                                "high": r4f(v["high"]), "source": v["source"]} for k, v in ind.items()},
         "products": [{"id": q["id"], "name": q["name"], "domain": q["domain"], "owner": q["owner"],
                       "color_index": pcol[q["id"]], "color_name": names[pcol[q["id"]]],
                       "color_fill": PALETTE[pcol[q["id"]]][1],

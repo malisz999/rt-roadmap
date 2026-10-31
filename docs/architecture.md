@@ -3,6 +3,7 @@
 Oct 23, 2026 · @Artur
 
 Revised Oct 29, 2026: CR-1 products (sections 4.2, 5, 6.1, 6.5, 7.1, 10).
+Revised Oct 31, 2026: CR-2 team indicators (sections 4, 5, 6.1, 6.9, 7.3, 7.4, 10).
 
 **rt is built as a Python 3.12 command-line package with two runtime dependencies (ruamel.yaml, Jinja2), organised as a pipeline of pure functions around one immutable `Plan` object.** This document supplements the requirements specification ("RS"); where the two differ, the RS wins unless section 13 here lists an agreed clarification. Section numbers prefixed "RS" point into the requirements.
 
@@ -109,6 +110,7 @@ rt/
 │  │  ├─ slots.py            # SlotBoard: per-slot sorted intervals, overlap test
 │  │  ├─ scheduler.py        # schedule(model, mode, anchor) → Schedule
 │  │  ├─ horizon.py          # anchor(), auto horizon, visibility, flags
+│  │  ├─ indicators.py       # team indicators: DEV per slot, DEV per QA, bands, flags
 │  │  └─ load.py             # utilisation, monthly load
 │  ├─ color/
 │  │  ├─ palette.py          # PALETTE, custom colour derivation, contrast
@@ -152,6 +154,7 @@ rt/
 | `color.dsatur` | `product_keys` | `(m, diags) -> dict[str, ColorKey]` | RS CO-4 step 2: product pins, then automatic `10…31, 0…9`; W014 |
 | `color.dsatur` | `assign_colors` | `(m, vis, nb, diags, products) -> dict[int, ColorRef]` | RS CO-4 to CO-7: project pins and product bars pre-coloured, DSATUR over `0…9`; W007, W009 |
 | `schedule.load` | `utilisation`, `monthly_load` | `(m, s, h) -> …` | RS OUT-13, OUT-32 |
+| `schedule.indicators` | `team_indicators` | `(teams, norms: TeamNorms) -> Indicators` | RS 7.13 TI-1 to TI-7; exact fractions, median band or norms, flags |
 | `plan.build` | `build_plan` | `(m, s, h, vis, colors, load, diags, product_colors) -> Plan` | Assembles; adds W001, W005, W006, W008, W010, W011, W013 |
 | `plan.serialize` | `to_json` | `(plan: Plan) -> str` | RS PL-1 to PL-6 |
 | `layout.viewmodel` | `build_page` | `(plan: Plan, opts: RenderOptions) -> PageVM` | All formatting and pixel maths |
@@ -178,7 +181,8 @@ Every type is a `@dataclass(frozen=True, slots=True)` or `NamedTuple`; collectio
 | `Subdomain` | `id`, `name`, `description`, `team_ids: tuple[str, ...]`, `pos` |  |
 | `Product` | `id`, `name`, `domain_id`, `owner`, `description`, `color: ColorSpec \| None`, `pos` | `domain_id` = the owning subdomain (RS 3.2) |
 | `Project` | `seq`, `id`, `name`, `team_id`, `start: Month \| None`, `size: str \| None`, `ongoing`, `depends_on_refs: tuple[str, ...]`, `description`, `color: ColorSpec \| None`, `pos`, `product_id: str \| None` | `pos` = first key of the mapping (RS 9 location rule); `product_id` `None` = standalone |
-| `Model` | `settings`, `sizes`, `subdomains`, `teams`, `projects`, `products` | Structure valid, references not yet checked; `products` in file order (legend order) |
+| `Band`, `TeamNorms` | `Band(min, max: Fraction \| None)`; `TeamNorms(devs_per_slot, devs_per_qa: Band \| None)` | `team_norms` (RS 3.2), bounds kept exact as written |
+| `Model` | `settings`, `sizes`, `subdomains`, `teams`, `projects`, `products`, `team_norms` | Structure valid, references not yet checked; `products` in file order (legend order) |
 | `ResolvedModel` | `Model` + `deps: Mapping[int, tuple[int, ...]]`, `weeks: Mapping[int, int \| None]` | Output of `check_references`; the only input the scheduler accepts |
 
 ### 5.2 Computed types
@@ -192,6 +196,7 @@ Every type is a `@dataclass(frozen=True, slots=True)` or `NamedTuple`; collectio
 | `Visibility` | `start: date \| None`, `end: date \| None`, `flags: frozenset[str]` | `None` when hidden |
 | `ColorRef` | `index: int \| None`, `name: str \| None`, `fill`, `accent`, `text` | `index` `None` for custom hex |
 | `Plan` | Mirrors RS 8 field for field, plus `palette` and the resolved `Model` reference | `plan.serialize` writes fields in dataclass order, so the order in the type IS the JSON key order |
+| `TeamPlan` indicator fields, `TeamIndicatorsPlan` | `developers`, `testers`, `devs_per_slot`, `devs_per_qa`, `indicator_flags` after `utilization`; `Plan.team_indicators` (`IndicatorPlan(all, median, low, high, source)` per indicator) right after `teams`; the exact `Indicators` ride along as a non-serialised field for the page | RS PL-8 |
 | `PlannedProject.product`, `ProductPlan` | `product` after `team`; `ProductPlan(id, name, domain, owner, color_index, color_name, color_fill, projects)` plus its `ColorRef` (not serialised) in `Plan.products`, right after `teams` | RS PL-7 |
 
 ### 5.3 View model (`layout.viewmodel`)
@@ -202,11 +207,11 @@ The view model holds only display-ready values: strings already formatted, pixel
 | --- | --- |
 | `PageVM` | title, subtitle, lang, horizon label, as-of label, legend items (sizes and product chips), timeline width, year / quarter / month columns, today mark, optional `SummaryVM`, sections, warnings, version |
 | `SectionVM` | subdomain id, name, description, counts, height, teams, connector paths (`d` strings) |
-| `TeamVM` | name, role badges, people total, slot label, utilisation percent and bar width, lanes |
+| `TeamVM` | name, role badges, people total, slot label, utilisation percent and bar width, lanes, indicator chips (`IndicatorVM`: text, mark, glyph, title; short texts for one-slot teams) and indicator `data` hooks |
 | `LaneVM` | number label (`1`, `+1`), overflow flag, bars |
 | `BarVM` | `left`, `width`, fill / accent / text colours, label, size chip, glyph flags, delay pill, lead-line box, `title` text (with the `Product: … · owned by …` line), `aria-label`, `data` attributes (incl. `data-product`) |
 | `LegendProductVM` | product id, name, ` · domain · owner` text, colour index, fill / accent / text colours, chip tooltip |
-| `SummaryVM` | KPI tiles, month headers, rows (kind, name, indent, cells with value text, bin class, tooltip, `data` attributes) |
+| `SummaryVM` | KPI tiles, month headers, rows (kind, name, indent, cells with value text, bin class, tooltip, `data` attributes), `CompositionVM` (team composition rows: subdomain, team, all, median, band) |
 
 ## 6. Algorithms
 
@@ -222,7 +227,7 @@ The anchor depends only on settings, while the automatic horizon depends on the 
 4. `visibility(schedule, horizon)` — visible intervals and flags.
 5. `neighbours(...)`, then `product_keys(...)` (product colours, W014), then `assign_colors(...)`.
 6. `utilisation(...)` and `monthly_load(...)`.
-7. `build_plan(...)` — assemble and emit the remaining warnings.
+7. `build_plan(...)` — computes `team_indicators(...)` (pure, independent of the schedule), assembles, and emits the remaining warnings.
 
 ### 6.2 Scheduler
 
@@ -298,6 +303,13 @@ Conversion is a short deterministic pipeline: decode and parse the CSV, turn eac
 
 If ruamel is ever upgraded, regenerate the two expected YAML files with the oracle and review the diff; emitter formatting is part of the RS contract (CV-18).
 
+### 6.9 Team indicators
+
+- Per team with a `capacity` mapping: `Fraction(developers, parallel_projects)` and, when testers > 0, `Fraction(developers, testers)`; everything else is `None` (RS TI-1 to TI-3).
+- All teams: summed numerators ÷ summed denominators over the teams where the value is defined; median of the same values (mean of the two middle ones for an even count).
+- Band: `team_norms` when the indicator has an entry (either bound may be `None`); else `median × 1/2 … median × 3/2` (more than 50 % away) when at least 3 values exist; else no band. Values strictly outside are `low` / `high`. All comparisons on exact fractions, so a value equal to a bound is never marked; rounding (`frac4`, `fmt1`) happens only for the plan and the page.
+- Tone (page only): for both indicators higher is worse, so `high` and `no_qa` are `bad` (red chip, class `rt-indicator--bad`) and `low` is `good` (green chip, `rt-indicator--good`).
+
 ## 7. HTML rendering design
 
 The page is static HTML positioned in pixels: every bar, line and mark gets an absolute `left` computed in Python, and CSS only supplies look, stacking and stickiness.
@@ -356,13 +368,14 @@ The page is static HTML positioned in pixels: every bar, line and mark gets an a
 | `_scale.html.j2` | Year, quarter and month rows, Today label |
 | `_section.html.j2` | Subdomain card, marks layer, connectors SVG, teams |
 | `_bar.html.j2` | Macro `bar(b: BarVM)` |
+| `_indicator.html.j2` | Macro `chip(c: IndicatorVM)`: team label chips and marked cells of the composition table |
 | `_warnings.html.j2` | Warnings `<details>` |
 
 Jinja environment: `autoescape=True`, `undefined=StrictUndefined`, `trim_blocks=True`, `lstrip_blocks=True`, `keep_trailing_newline=True`, loader `PackageLoader("rt", "render/templates")`. Templates contain loops and `if` only; no arithmetic, no formatting filters.
 
 ### 7.4 CSS
 
-- One file `static/rt.css` (target ≤ 15 KB), read with `importlib.resources` and inlined. Order: tokens → base → page blocks → summary → scale → section → team → lane → bar and states → connectors → tooltip → warnings → print → dark mode.
+- One file `static/rt.css` (target ≤ 15 KB after compaction: comments, whitespace around braces and semicolons, and the space after `:` are dropped; commas keep their space so the font stack stays verbatim), read with `importlib.resources` and inlined. Order: tokens → base → page blocks → summary → scale → section → team → lane → bar and states → connectors → tooltip → warnings → print → dark mode.
 - All colours are custom properties on `:root` (RS 7.8 tokens), redefined in `@media (prefers-color-scheme: dark)`. Per-bar colours arrive as inline custom properties `--fill`, `--accent`, `--ink`; inline styles carry nothing else besides `left`, `width` and, for the summary, nothing at all (bins are classes `rt-bin-0` … `rt-bin-4`).
 - Every class starts with `rt-`; BEM-style `block__element--modifier`. Classes and `data-*` attributes in RS 7.10 are a public contract and MUST NOT be renamed.
 - Print block per RS OUT-25, plus `position: static` for all sticky elements and `.rt-tip { display: none }`.
@@ -513,7 +526,7 @@ The harness runs `rt validate` and asserts the exact set of codes and positions,
 
 ### 10.4 Traceability
 
-Each RS acceptance test becomes one test function named after it (`test_at_03_bar_geometry`), so a failing CI run names the requirement directly. `tests/TRACEABILITY.md` is generated from the test names and lists AT → test file; CI fails if any of AT-01 … AT-65 has no test.
+Each RS acceptance test becomes one test function named after it (`test_at_03_bar_geometry`), so a failing CI run names the requirement directly. `tests/TRACEABILITY.md` is generated from the test names and lists AT → test file; CI fails if any of AT-01 … AT-74 has no test.
 
 ## 11. Build, packaging and CI
 
@@ -524,7 +537,7 @@ rt ships as a wheel with a console script `rt`, and on each release also as one 
 ```toml
 [project]
 name = "rt-roadmap"
-version = "1.1.0"
+version = "1.2.0"
 requires-python = ">=3.12"
 dependencies = ["ruamel.yaml>=0.19.1,<0.20", "Jinja2>=3.1,<4"]
 
@@ -565,7 +578,7 @@ The distribution name `rt-roadmap` avoids clashing with short names on PyPI (con
 | `lint` | ubuntu | `ruff check`, `ruff format --check`, `mypy` | Yes |
 | `test` | ubuntu, macOS 14 (arm64), Windows × Python 3.12, 3.13 | `pytest -m "not slow" --cov`, coverage ≥ 90 % on core packages | Yes |
 | `perf` | ubuntu | `pytest -m slow` (RS NF-3) | Yes |
-| `traceability` | ubuntu | Every AT-01…AT-65 has a test | Yes |
+| `traceability` | ubuntu | Every AT-01…AT-74 has a test | Yes |
 | `release` (tag `v*`) | ubuntu, macOS (arm64, x86-64), Windows | Build wheel and sdist; PyInstaller `--onefile` binaries; smoke-test each binary with `rt render` on the three fixtures; screenshot job for human approval; publish | — |
 
 Core packages for the coverage gate: `model`, `schedule`, `color`, `plan`, `layout`, `diagnostics` (RS NF-8).
@@ -614,6 +627,6 @@ Designing the system surfaced eight points the requirements leave open; this doc
 
 ### 13.3 Companion file
 
-`reference_plan.py` (saved in the repository under `docs/reference/`) is the oracle that produced the three expected plan files. It implements scheduling in `delay` and `overflow` modes, horizon, visibility, product colours and colouring (W009, W013, W014 included), utilisation and monthly load with half-up rounding. It performs no validation and does not implement `error` mode, so it is a test oracle only.
+`reference_plan.py` (saved in the repository under `docs/reference/`) is the oracle that produced the three expected plan files. It implements scheduling in `delay` and `overflow` modes, horizon, visibility, product colours and colouring (W009, W013, W014 included), team indicators, utilisation and monthly load with half-up rounding. It performs no validation and does not implement `error` mode, so it is a test oracle only.
 
 `reference_convert.py` (same folder) produced both expected YAML files from the CSV fixtures. It implements decoding, delimiter detection, header mapping, value parsing, team and product resolution, skeleton generation, base merge and emission as in section 6.8, but not the validator or the E103–E107 checks, so it too is a test oracle only.

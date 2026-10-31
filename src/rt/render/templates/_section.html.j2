@@ -1,4 +1,5 @@
 {% from "_bar.html.j2" import bar with context %}
+{% from "_indicator.html.j2" import chip %}
 <section class="rt-subdomain" data-subdomain="{{ s.id }}" aria-labelledby="rt-sd-{{ s.id }}">
 <header class="rt-subdomain__head">
 <div class="rt-subdomain__intro">
@@ -28,12 +29,17 @@
 </svg>
 {% endif %}
 {% for t in s.teams %}
-<div class="rt-team{% if t.compact %} rt-team--compact{% endif %}" data-team="{{ t.id }}" data-slots="{{ t.slots }}" data-utilization="{{ t.utilization }}">
+<div class="rt-team{% if t.compact %} rt-team--compact{% endif %}" data-team="{{ t.id }}" data-slots="{{ t.slots }}" data-utilization="{{ t.utilization }}"{% for k, v in t.data %} {{ k }}="{{ v }}"{% endfor %}>
 <div class="rt-team__label">
 <div class="rt-team__info">
 <div class="rt-team__top"><h3 class="rt-team__name"{{ L }} title="{{ t.name }}">{{ t.name }}</h3><span class="rt-team__util" title="{{ t.util_title }}"><span class="rt-meter"><span class="rt-meter__fill" style="width: {{ t.util_width }}%"></span></span>{{ t.util_text }}</span></div>
 <div class="rt-team__roles">{% for b in t.badges %}<span class="rt-badge{% if b.zero %} rt-badge--zero{% endif %}" title="{{ b.title }}"><strong>{{ b.role }}</strong> {{ b.count }}</span>{% endfor %}</div>
+{% if t.compact %}
+<div class="rt-team__meta"><span>{{ t.people }} · {{ t.slots_label }}</span>{% for c in t.indicators %}{{ chip(c) }}{% endfor %}</div>
+{% else %}
 <div class="rt-team__meta">{{ t.people }} · {{ t.slots_label }}</div>
+{% if t.indicators %}<div class="rt-team__ratios">{% for c in t.indicators %}{{ chip(c) }}{% endfor %}</div>{% endif %}
+{% endif %}
 </div>
 <div class="rt-team__slots">
 {% for lane in t.lanes %}

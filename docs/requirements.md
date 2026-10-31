@@ -3,6 +3,7 @@
 Oct 23, 2026 · @Artur
 
 Revised Oct 29, 2026: CR-1 products (sections 2, 3.2, 3.4, 5, 6.6, 7.2, 7.10, 8, 9, 11.7, 12.1, 13.2).
+Revised Oct 31, 2026: CR-2 team composition indicators (sections 2, 3.1, 3.2, 7.5, 7.8, 7.10, 7.12, 7.13, 8, 11.8, 12.1).
 
 ## 1. Introduction
 
@@ -52,6 +53,7 @@ Revised Oct 29, 2026: CR-1 products (sections 2, 3.2, 3.4, 5, 6.6, 7.2, 7.10, 8,
 | Product | A named group of projects owned by exactly one domain (a subdomain id). Its projects may run in teams of any subdomain; all its bars share the product's colour. |
 | Owning domain | The subdomain that owns a project: its product's `domain`, or for a standalone project its team's subdomain. Shown in the tooltip and the legend; bars stay in the section of the team that does the work. |
 | Standalone project | A project without `product`. Coloured from palette entries 0–9 as in version 1. |
+| Team indicators | DEV per slot (developers ÷ `parallel_projects`) and DEV per QA (developers ÷ testers): ratios that compare team composition across the roadmap (section 7.13). |
 | Dependency | Finish-to-start link: a project cannot start before each project it depends on has ended. |
 | Anchor | The earliest date for projects without a `start`: the horizon start if given, else the 1st of the current month (SC-12). |
 | Auto-start project | A project without `start`; it starts as soon as its dependencies have ended and a slot is free. |
@@ -98,6 +100,8 @@ sizes:                     # required: t-shirt size -> weeks
   L: 8
 scheduling:                # optional
   on_conflict: delay
+team_norms:                # optional: bands for the team indicators (7.13)
+  devs_per_qa: { max: 4 }
 subdomains:                # required: render order = file order
   - id: channels
     name: Payment Channels
@@ -158,6 +162,15 @@ projects:                  # required: sequence = file order
 | --- | --- | --- | --- |
 | `on_conflict` | enum | `delay` | `delay` \| `overflow` \| `error` (SC-5 to SC-7) |
 | `adjacency_gap_days` | integer | 14 | 0–90; used by colouring (CO-2) |
+
+**`team_norms`** (optional object; roadmap-wide bands for the team indicators of section 7.13)
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `devs_per_slot.min`, `devs_per_slot.max` | number | Optional, 0–999, integer or decimal; `min` ≤ `max` (else E012 at `max`) |
+| `devs_per_qa.min`, `devs_per_qa.max` | number | Same |
+
+An indicator with a band is marked against its written bounds only (a missing bound is not checked); an indicator without one is compared with the median (TI-5).
 
 **`subdomains[]`** (required list, ≥ 1 item)
 
@@ -369,7 +382,7 @@ Bars that touch or sit close to each other on screen never share a colour, solve
 
 ### 5.3 Palette
 
-Soft fills with a strong left accent and one dark text colour `#1E293B`, giving at least 9:1 text contrast on entries 0–9 and at least 7:1 on entries 10–31 (WCAG AAA). Red is deliberately absent; it is reserved for over-capacity and Today markers. Any palette name may be used in `color:` of a project or a product.
+Soft fills with a strong left accent and one dark text colour `#1E293B`, giving at least 9:1 text contrast on entries 0–9 and at least 7:1 on entries 10–31 (WCAG AAA). Red is deliberately absent; it is reserved for over-capacity and Today markers and for worse team indicators (7.13). Any palette name may be used in `color:` of a project or a product.
 
 | Index | Name | Fill | Accent (border) |
 | --- | --- | --- | --- |
@@ -627,7 +640,7 @@ The wireframe uses the worked example: delayed bars show a dashed lead line from
 
 ### 7.5 Team swimlane
 
-- **OUT-12** Left cell: team name (15 px, weight 600); four role badges `DEV 5` `PM 1` `BA 1` `QA 2` (a zero badge is shown dimmed); total people; "2 parallel slots"; slot utilisation as a whole percentage with a thin progress bar.
+- **OUT-12** Left cell: team name (15 px, weight 600); four role badges `DEV 5` `PM 1` `BA 1` `QA 2` (a zero badge is shown dimmed); total people; "2 parallel slots"; slot utilisation as a whole percentage with a thin progress bar; the two team indicator chips of section 7.13 (`2.5 DEV/slot` `2.5 DEV/QA`) on a row of their own. A team with one regular slot (56 px label) shows them on the people line in short form (`2.0/slot` `2.0/QA`), so its height does not change; in an extreme case the people text is cut with an ellipsis, never the chips.
 - **OUT-13** Utilisation = sum of visible days of bars in regular slots ÷ (slots × horizon days), rounded half up. Overflow lanes are excluded. Worked example: Alpha 276 ÷ 362 = **76 %**, Beta 98 ÷ 181 = **54 %**.
 - **OUT-14** Right side: one row per slot, numbered `1…N` in a narrow muted gutter, alternate rows tinted very lightly. Empty slots are still drawn so free capacity is visible.
 - **OUT-15** Overflow lanes (overflow mode only) follow the regular slots, labelled `+1`, `+2`, with a red diagonal-hatched background and the caption "Over capacity".
@@ -665,6 +678,8 @@ The wireframe uses the worked example: delayed bars show a dashed lead line from
 | Today | `#E11D48` | `#FB7185` |
 | Over capacity | `#DC2626` | `#F87171` |
 | Bar text | `#1E293B` | `#1E293B` (bars keep light fills) |
+| Indicator worse: high, no QA (fill / text and outline) | `#FEE2E2` / `#B91C1C` | `#450A0A` / `#FCA5A5` |
+| Indicator better: low (fill / text and outline) | `#DCFCE7` / `#166534` | `#052E16` / `#86EFAC` |
 
 Dark mode SHOULD follow `prefers-color-scheme: dark`.
 
@@ -690,6 +705,9 @@ These class names and attributes are a contract; tests and future tooling rely o
 | Load cell | `rt-load-cell` | `data-row` (team id, subdomain id, or `all`), `data-kind` (`team`, `subdomain`, `all`), `data-month` (`2027-02`), `data-load` (4 decimals) |
 | Warning item | `rt-warning` | `data-code` |
 | Product chip (legend) | `rt-product` | `data-product` (id), `data-color-index` (empty for a custom hex colour) |
+| Team block (indicators) | `rt-team` | also `data-devs-per-slot`, `data-devs-per-qa` (4 decimals, empty when not defined), `data-indicator-flags` (space-separated, alphabetical) |
+| Indicator chip | `rt-indicator` | `data-indicator` (`devs_per_slot`, `devs_per_qa`), `data-mark` (`low`, `high`, `no_qa` or empty), `data-tone` (`bad` for high and no QA, `good` for low, or empty); classes `rt-indicator--bad` / `--good` |
+| Team composition table | `rt-composition` | rows `rt-composition-row`; team rows carry `data-team` |
 
 ### 7.11 Accessibility
 
@@ -701,7 +719,7 @@ These class names and attributes are a contract; tests and future tooling rely o
 The summary shows, at a glance, how loaded each team is per month: a KPI row plus a heatmap table whose month columns line up with the timeline below.
 
 - **OUT-29** Heading h2 "Summary", placed after the legend and before the timeline header; it scrolls horizontally with the timeline so months stay aligned.
-- **OUT-30** **KPI row** of tiles: Subdomains, Teams, Projects (finite), Ongoing, Delayed, Over capacity (overflow mode only), Slots (sum of `parallel_projects`), People (sum of all roles, with a `DEV · PM · BA · QA` breakdown).
+- **OUT-30** **KPI row** of tiles: Subdomains, Teams, Projects (finite), Ongoing, Delayed, Over capacity (overflow mode only), Slots (sum of `parallel_projects`), People (sum of all roles, with a `DEV · PM · BA · QA` breakdown), DEV per slot and DEV per QA (the All teams values of TI-4, `–` when not defined).
 - **OUT-31** **Monthly load table.** First column (280 px, sticky) holds row names; then one cell per horizon month, `month_width` px wide. Rows: for each subdomain in file order, a bold subdomain row followed by its team rows (indented 16 px); a final bold "All teams" row.
 - **OUT-32** Load of a team in a month = occupied slot-days of its projects inside that month (regular and overflow lanes, ongoing included) ÷ (`parallel_projects` × days in the month). Subdomain and "All teams" rows divide the summed numerators by the summed denominators. Over 100 % happens only in overflow mode. Note this differs from OUT-13 utilisation, which excludes overflow.
 - **OUT-33** Each cell shows the load as a whole percentage rounded half up (`0 %` shown as `–`), coloured by bin, with a tooltip "Alpha · Feb 2027 · 53 of 56 slot-days (95 %)".
@@ -723,6 +741,34 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
 | Beta | – | 50 % | – | 100 % | 100 % | 77 % |
 | All teams | 67 % | 80 % | 67 % | 76 % | 67 % | 59 % |
 
+- **OUT-34** **Team composition table**, after the load table and its key: caption "Team composition"; columns Team · DEV · QA · Slots · DEV per slot · DEV per QA · Notes; rows grouped under a bold subdomain row as in OUT-31; then "All teams", "Median" and, when a band exists, "Normal range" (median ± 50 %) or "Norm" (`team_norms`). Values have one decimal; a marked value is a chip as in OUT-12; Notes name the marks ("DEV per slot high (worse)", "DEV per QA low (better)", "no QA", "no capacity given").
+
+### 7.13 Team indicators
+
+Two ratios let teams be compared with each other and make unusual composition visible: how many developers stand behind each project a team runs at once, and how many developers one tester has to keep up with. They never change scheduling and never produce warnings.
+
+- **TI-1 Inputs.** Developers = `capacity.developers`, testers = `capacity.testers`; product managers and analysts do not count. Slots = `parallel_projects` as written: slots held by ongoing projects count, overflow lanes never do.
+- **TI-2 DEV per slot** = developers ÷ slots. Not defined (`null`) when the team has no `capacity` mapping.
+- **TI-3 DEV per QA** = developers ÷ testers. Not defined without `capacity` or when testers = 0; developers > 0 with no testers is flagged `no_qa`.
+- **TI-4 Roadmap values.** "All teams" = summed numerators ÷ summed denominators over the teams where the indicator is defined; the median over the same teams is the baseline.
+- **TI-5 Discrepancy.** A value is marked `low` below the band and `high` above it; a value on a bound is not marked. The band is the `team_norms` entry of the indicator when written, else median × 0.5 to median × 1.5 (a value more than 50 % away from the median is marked) when at least 3 teams have the indicator; otherwise nothing is marked. Exact fractions are compared.
+- **TI-6 Rounding.** Plan values 4 decimals half up (PL-5); display 1 decimal half up.
+- **TI-7 Flags** per team, sorted: `devs_per_qa_high`, `devs_per_qa_low`, `devs_per_slot_high`, `devs_per_slot_low`, `no_capacity`, `no_qa`.
+- **TI-8 Display.** Chips (OUT-12) read `2.5 DEV/slot` and `2.5 DEV/QA`, `–` when not defined, `no QA` for flag `no_qa`. For both indicators higher is worse: a `high` value is a red chip with `▲`, `no QA` a red chip with `!`, and a `low` value a green chip with `▼` (better). The glyph carries the state without colour (OUT-26). The tooltip explains the mark: `DEV per slot 3.5 — high (worse): above 3.0 (median 2.0 + 50 %)` or `DEV per slot 1.5 — low (better): below the norm 2.0`.
+
+Expected values for `roadmap.example.yaml` (DEV per slot median 2.0, band 1.0–3.0; DEV per QA median 2.75, band 1.375–4.125). Only Cyberbezpieczeństwo is marked; Karty's 3.0 lies exactly on the upper edge, so it is not marked:
+
+| Team | DEV | QA | Slots | DEV per slot | DEV per QA | Flags |
+| --- | --- | --- | --- | --- | --- | --- |
+| BLIK i przelewy | 5 | 2 | 2 | 2.5 | 2.5 | — |
+| Karty | 6 | 2 | 2 | 3.0 | 3.0 | — |
+| Integracje acquirerów | 7 | 3 | 3 | 2.3 | 2.3 | — |
+| Panel merchanta | 4 | 1 | 2 | 2.0 | 4.0 | — |
+| Aplikacja mobilna | 4 | 2 | 2 | 2.0 | 2.0 | — |
+| Utrzymanie i wsparcie | 3 | 1 | 2 | 1.5 | 3.0 | — |
+| Cyberbezpieczeństwo | 2 | 0 | 1 | 2.0 | — | `no_qa` |
+| All teams | 31 | 11 | 14 | 2.2 (2.2143) | 2.6 (29 ÷ 11 = 2.6364) | |
+
 ## 8. Plan JSON (test oracle)
 
 `--plan plan.json` writes the computed schedule as JSON, so testers can assert scheduling and colouring without parsing HTML; the HTML MUST be generated from exactly this plan.
@@ -733,7 +779,8 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
 - **PL-4** `flags` values: `auto_start`, `clipped_left`, `clipped_right`, `continues`, `delayed`, `hidden`, `over_capacity`; sorted alphabetically. `delay_reason`: `dependency`, `capacity`, `dependency+capacity` or `null`. `neighbors` = `seq` numbers of adjacent bars (CO-3), ascending.
 - **PL-5** `utilization` and every `monthly_load` value are numbers rounded to 4 decimals.
 - **PL-6** `monthly_load` is always present (independent of `--summary`): `months`, then per-team, per-subdomain and `total` arrays aligned with `months` (OUT-32).
-- **PL-7** Each project has `product` (product id or `null`) right after `team`. A top-level `products` list follows `teams`, in file order (empty when the file has none): `{ "id", "name", "domain", "owner", "color_index", "color_name", "color_fill", "projects" }`, with `owner` `null` when not given, `color_index` and `color_name` `null` for a custom hex colour, and `projects` the `seq` numbers of its projects (hidden ones included), ascending.
+- **PL-8** Each team has, after `utilization`: `developers`, `testers` (integers, `null` without `capacity`), `devs_per_slot`, `devs_per_qa` (4 decimals or `null`) and `indicator_flags` (TI-7). A top-level `team_indicators` object follows `teams`: `{ "devs_per_slot": { "all", "median", "low", "high", "source" }, "devs_per_qa": { … } }`; `low` / `high` are the band limits (`null` when not checked) and `source` is `"norm"`, `"median"` or `null`.
+- **PL-7** Each project has `product` (product id or `null`) right after `team`. A top-level `products` list follows `team_indicators`, in file order (empty when the file has none): `{ "id", "name", "domain", "owner", "color_index", "color_name", "color_fill", "projects" }`, with `owner` `null` when not given, `color_index` and `color_name` `null` for a custom hex colour, and `projects` the `seq` numbers of its projects (hidden ones included), ascending.
 
 ```json
 {
@@ -744,8 +791,13 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
   "horizon": { "start": "2027-01", "end": "2027-06", "start_date": "2027-01-01", "end_exclusive": "2027-07-01", "days": 181 },
   "on_conflict": "delay",
   "teams": [
-    { "id": "alpha", "subdomain": "core", "slots": 2, "overflow_lanes": 0, "utilization": 0.7624 }
+    { "id": "alpha", "subdomain": "core", "slots": 2, "overflow_lanes": 0, "utilization": 0.7624,
+      "developers": 4, "testers": 1, "devs_per_slot": 2.0, "devs_per_qa": 4.0, "indicator_flags": [] }
   ],
+  "team_indicators": {
+    "devs_per_slot": { "all": 2.0, "median": 2.0, "low": null, "high": null, "source": null },
+    "devs_per_qa": { "all": 3.0, "median": 3.0, "low": null, "high": null, "source": null }
+  },
   "products": [],
   "projects": [
     {
@@ -860,7 +912,7 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 
 ## 11. Acceptance tests
 
-The tool is accepted when all 65 scenarios below pass. "DE" = dependencies-example.yaml; CSV fixtures are in section 13.2. "WE" = `scheduling-worked-example.yaml`, "EX" = `roadmap.example.yaml`, "PE" = `products-example.yaml`; all runs use `--today` or the file's `today` so results are reproducible.
+The tool is accepted when all 74 scenarios below pass. "DE" = dependencies-example.yaml; CSV fixtures are in section 13.2. "WE" = `scheduling-worked-example.yaml`, "EX" = `roadmap.example.yaml`, "PE" = `products-example.yaml`; all runs use `--today` or the file's `today` so results are reproducible.
 
 ### 11.1 Scheduling and colour
 
@@ -962,6 +1014,20 @@ The tool is accepted when all 65 scenarios below pass. "DE" = dependencies-examp
 | AT-64 | CSV with a `product` column, `--base` holding products | `product:` written as the id (a name resolves too); unknown value → E038; without `--base` → W020 |
 | AT-65 | `rt schema` | The schema accepts `products` and `project.product`, and still validates every fixture |
 
+### 11.8 Team indicators
+
+| ID | Given / When | Then |
+| --- | --- | --- |
+| AT-66 | `rt render EX --plan p.json` | Every team's `developers`, `testers`, `devs_per_slot`, `devs_per_qa` equal the table in 7.13; only Cyberbezpieczeństwo is flagged (`no_qa`, `devs_per_qa` null) |
+| AT-67 | Same run | `team_indicators.devs_per_slot`: all 2.2143, median 2.0, low 1.0, high 3.0, source `median`; `devs_per_qa`: all 2.6364, median 2.75, low 1.375, high 4.125, source `median` |
+| AT-68 | Same run, HTML | Each `rt-team` carries the indicator hooks equal to the plan; Cyberbezpieczeństwo shows a red `! no QA` chip (`data-tone="bad"`); with the AT-70 norms Karty shows a red `▲ 3.0 DEV/slot` and Utrzymanie i wsparcie a green `▼ 1.5 DEV/slot` (`data-tone="good"`); one-slot teams show the chips on the people line (no extra row) |
+| AT-69 | WE, DE, PE | WE: Alpha 2.0 / 4.0, Beta 2.0 / 2.0, no marks, source `null`. DE, PE: every team `no_capacity`, values null. Plans equal the expected files |
+| AT-70 | EX with `team_norms: { devs_per_slot: { min: 2, max: 2.5 }, devs_per_qa: { max: 3 } }` | Karty `devs_per_slot_high`, Utrzymanie i wsparcie `devs_per_slot_low`, Panel merchanta `devs_per_qa_high`; values on a bound not marked; source `norm` for both |
+| AT-71 | `team_norms` with `min: 5, max: 2`, `min: "two"` and the key `devs_per_slots` | Exit 1; E012 at the `max`, E011, E002 with "did you mean" |
+| AT-72 | `rt render EX --summary` | KPI tiles `DEV per slot 2.2` and `DEV per QA 2.6`; one `rt-composition` table: 7 team rows in subdomain and team order, then All teams, Median, Normal range |
+| AT-73 | `rt render EX --strict` and `rt validate EX` | Same diagnostics as before (no new warnings) |
+| AT-74 | `rt schema` | Accepts `team_norms`; still validates every fixture |
+
 ## 12. Assumptions and open questions
 
 All seven questions from the first review and the two requirements added on 24 Oct 2026 (command chaining, CSV import) are built into this version; the team-to-subdomain assumption (A1) still awaits confirmation.
@@ -979,6 +1045,7 @@ All seven questions from the first review and the two requirements added on 24 O
 | Polish? | For project names (and other user text); page labels stay English | IN-8, OUT-27, AT-36 |
 | Command chaining (24 Oct)? | Yes: every command reads stdin and writes stdout; one artifact per stream; nothing on stdout after a failure; exit 141 on a closed pipe | 6.5, CLI-2, AT-37 to AT-46 |
 | CSV project list (24 Oct)? | Yes, through a conversion command rt convert (CSV → YAML) rather than CSV input to render; required columns name and size; optional base file for teams and settings | 3.4, 6.6, AT-47 to AT-55 |
+| Team indicators (CR-2, 31 Oct)? | Yes: DEV per slot and DEV per QA per team, developers only, every slot counts (ongoing included); marked when more than 50 % from the median (3+ teams) or outside roadmap-wide `team_norms`; higher is worse (red), lower is better (green); shown in labels, summary and plan; never warnings | 3.2, 7.13, OUT-12, OUT-30, OUT-34, PL-8, AT-66 to AT-74 |
 | Products (CR-1, 29 Oct)? | Yes: optional `products`, each owned by one domain; a product is delivered through ordinary projects (one team per project, any subdomain); its bars share one colour from a 32-colour palette; a project pin wins over the product colour | 3.2, 5.2, 5.3, 7.2, 8, AT-56 to AT-65 |
 
 ### 12.2 Assumptions
@@ -986,7 +1053,7 @@ All seven questions from the first review and the two requirements added on 24 O
 | ID | Assumption | Effect if wrong |
 | --- | --- | --- |
 | A1 | Each team belongs to exactly one subdomain (teams are nested under subdomains) | Teams would move to a top-level list with a `subdomains` reference |
-| A2 | Only `parallel_projects` limits scheduling; role head counts are displayed only | Scheduler needs per-project role demand |
+| A2 | Only `parallel_projects` limits scheduling; role head counts are displayed and feed the team indicators (7.13) only | Scheduler needs per-project role demand |
 | A3 | A delayed or dependent project may start mid-month | Add a snap-to-month option |
 | A4 | A week is 7 calendar days; no holidays or working-day calendar | Add a calendar block |
 | A5 | Default conflict handling is `delay`, not `overflow` | Change one default |
@@ -1030,7 +1097,7 @@ Delivered alongside this document and stored in the project.
 | `dependencies-example.expected.json` | Expected plan for the dependency example | AT-26, AT-59 |
 | `products-example.yaml` | Input of the products example: two products, one spanning two subdomains, one project pinned over its product's colour | AT-56 to AT-58, AT-63 |
 | `products-example.expected.json` | Expected plan for the products example | AT-56 |
-| `roadmap.schema.json` | JSON Schema (draft 2020-12) of the input format | Editor support, `rt schema`, schema-level validation, AT-65 |
+| `roadmap.schema.json` | JSON Schema (draft 2020-12) of the input format | Editor support, `rt schema`, schema-level validation, AT-65, AT-74 |
 | `convert/projects.minimal.csv` | Smallest CSV: columns name and size only | AT-47, AT-55 |
 | `convert/projects.minimal.expected.yaml` | Expected skeleton output for the minimal CSV | AT-47, AT-55 |
 | `convert/projects.pl.csv` | Polish Excel-style export: semicolons, BOM, CRLF, Polish headers, quoted delimiter, ignored column | AT-48 to AT-50 |

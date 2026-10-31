@@ -42,6 +42,18 @@ def ratio4(numerator: int, denominator: int) -> Decimal:
     return to_decimal(Fraction(numerator, denominator)).quantize(_RATIO, rounding=ROUND_HALF_UP)
 
 
+def frac4(value: Fraction | None) -> Decimal | None:
+    """An exact ratio rounded half up to 4 decimals for the plan; None stays None (team indicators)."""
+    if value is None:
+        return None
+    return to_decimal(value).quantize(_RATIO, rounding=ROUND_HALF_UP)
+
+
+def fmt1(value: Number) -> str:
+    """One decimal, half up, for display: `2.3`, `4.0`."""
+    return str(to_decimal(value).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
 def fmt4(value: Decimal) -> str:
     """A 4-decimal value as written in `data-*` attributes: `0.7624`, `1.0000`."""
     return str(value.quantize(_RATIO, rounding=ROUND_HALF_UP))

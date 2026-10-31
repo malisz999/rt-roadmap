@@ -22,6 +22,7 @@ from rt.color.types import ColorRef
 from rt.decimalutil import ratio4
 from rt.diagnostics import Pos
 from rt.model.types import (
+    Band,
     Capacity,
     ColorSpec,
     Mode,
@@ -33,19 +34,23 @@ from rt.model.types import (
     Size,
     Subdomain,
     Team,
+    TeamNorms,
 )
 from rt.plan.types import (
     HorizonOut,
+    IndicatorPlan,
     MonthlyLoad,
     Plan,
     PlannedProject,
     PlanWarning,
     ProductPlan,
     SubdomainLoad,
+    TeamIndicatorsPlan,
     TeamLoad,
     TeamPlan,
     VisibleOut,
 )
+from rt.schedule.indicators import team_indicators
 from rt.timeutil import Month, parse_date
 
 REPO = Path(__file__).resolve().parents[2]
@@ -170,6 +175,7 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
                         int(cap.get("testers", 0)),
                     ),
                     pos=_pos(),
+                    capacity_given="capacity" in t,
                 )
             )
             tids.append(str(t["id"]))
@@ -206,7 +212,16 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
         )
         for q in doc.get("products") or []
     )
-    model = Model(settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), products=products)
+    norms = doc.get("team_norms") or {}
+    team_norms = TeamNorms(
+        **{
+            key: Band(*(Fraction(str(band[b])) if b in band else None for b in ("min", "max")))
+            for key, band in ((k, norms[k] or {}) for k in ("devs_per_slot", "devs_per_qa") if k in norms)
+        }
+    )
+    model = Model(
+        settings, sizes, tuple(subdomains), tuple(teams), tuple(projects), products=products, team_norms=team_norms
+    )
     deps = {pp["seq"]: tuple(pp["depends_on"]) for pp in out["projects"]}
     weeks = {pp["seq"]: pp["weeks"] for pp in out["projects"]}
     resolved = ResolvedModel(model, MappingProxyType(deps), MappingProxyType(weeks))
@@ -215,18 +230,22 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
     planned = tuple(_project(pp) for pp in out["projects"])
     team_plans = tuple(_team_plan(tp, planned, h0, h1) for tp in out["teams"])
     return Plan(
-        rt_version="1.1.0",
+        rt_version="1.2.0",
         format=1,
         title=out["title"],
         today=settings.today,
         horizon=HorizonOut(start, end, h0, h1, hz["days"]),
         on_conflict=Mode(out["on_conflict"]),
         teams=team_plans,
+        team_indicators=TeamIndicatorsPlan(
+            *(_indicator_plan(out["team_indicators"][k]) for k in ("devs_per_slot", "devs_per_qa"))
+        ),
         products=tuple(_product_plan(pp) for pp in out["products"]),
         projects=planned,
         monthly_load=_load(out["monthly_load"], planned, teams, subdomains),
         warnings=tuple(PlanWarning(w["code"], w["line"], w["column"], w["message"]) for w in out["warnings"]),
         model=resolved,
+        indicators=team_indicators(model.teams, model.team_norms),
     )
 
 
@@ -289,6 +308,16 @@ def _project(pp: dict[str, Any]) -> PlannedProject:
     )
 
 
+def _dec4(value: float | None) -> Decimal | None:
+    return None if value is None else Decimal(str(value)).quantize(Decimal("0.0001"))
+
+
+def _indicator_plan(data: dict[str, Any]) -> IndicatorPlan:
+    return IndicatorPlan(
+        _dec4(data["all"]), _dec4(data["median"]), _dec4(data["low"]), _dec4(data["high"]), data["source"]
+    )
+
+
 def _team_plan(tp: dict[str, Any], planned: tuple[PlannedProject, ...], h0: date, h1: date) -> TeamPlan:
     days = sum(
         (p.visible.end - p.visible.start).days
@@ -297,7 +326,17 @@ def _team_plan(tp: dict[str, Any], planned: tuple[PlannedProject, ...], h0: date
     )
     exact = Fraction(days, tp["slots"] * (h1 - h0).days)
     return TeamPlan(
-        tp["id"], tp["subdomain"], tp["slots"], tp["overflow_lanes"], ratio4(days, tp["slots"] * (h1 - h0).days), exact
+        tp["id"],
+        tp["subdomain"],
+        tp["slots"],
+        tp["overflow_lanes"],
+        ratio4(days, tp["slots"] * (h1 - h0).days),
+        developers=tp["developers"],
+        testers=tp["testers"],
+        devs_per_slot=_dec4(tp["devs_per_slot"]),
+        devs_per_qa=_dec4(tp["devs_per_qa"]),
+        indicator_flags=tuple(tp["indicator_flags"]),
+        utilization_exact=exact,
     )
 
 

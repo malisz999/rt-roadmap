@@ -2,7 +2,8 @@
 
 Generated models: 1–5 teams with 1–4 slots, 0–40 projects, sizes 1–26 weeks, starts within 24 months or omitted,
 ~10 % ongoing, dependencies only to earlier finite projects; optionally 0–4 or 30–36 products (some pinned) with
-projects that reference them.
+projects that reference them; capacities (sometimes none, sometimes no testers) and optional team_norms for the
+team indicators.
 """
 
 from __future__ import annotations
@@ -55,13 +56,24 @@ def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0, prod
     lines.append(f"  today: 2027-{draw(st.integers(1, 12)):02d}-{draw(st.integers(1, 28)):02d}")
     gap = draw(st.sampled_from([0, 7, 14, 30]))
     lines += ["sizes:", *(f"  {k}: {v}" for k, v in sizes.items())]
-    lines += ["scheduling:", f"  adjacency_gap_days: {gap}", "subdomains:"]
+    lines += ["scheduling:", f"  adjacency_gap_days: {gap}"]
+    if draw(st.integers(0, 3)) == 0:
+        lines.append("team_norms:")
+        for key in draw(st.lists(st.sampled_from(["devs_per_slot", "devs_per_qa"]), min_size=1, unique=True)):
+            low = draw(st.none() | st.sampled_from(["1", "1.5", "2"]))
+            high = draw(st.none() | st.sampled_from(["2.5", "3", "4.25"]))
+            bounds = ", ".join(f"{k}: {v}" for k, v in (("min", low), ("max", high)) if v is not None)
+            lines.append(f"  {key}: {{ {bounds} }}")
+    lines.append("subdomains:")
     for sd, teams in (("one", range(split)), ("two", range(split, team_count))):
         if not teams:
             continue
         lines += [f"  - id: {sd}", f"    name: {sd}", "    teams:"]
         for t in teams:
             lines += [f"      - id: t{t}", f"        name: T{t}", f"        parallel_projects: {slots[t]}"]
+            if draw(st.integers(0, 4)):  # most teams give a capacity; testers may be 0
+                devs, testers = draw(st.integers(0, 12)), draw(st.integers(0, 4))
+                lines.append(f"        capacity: {{ developers: {devs}, testers: {testers} }}")
     product_count = draw(st.integers(0, 4) | st.integers(30, 36)) if products else 0
     domains = ["one"] if split == team_count else ["one", "two"]
     has_pins = False
@@ -187,9 +199,11 @@ def test_colouring_invariants(spec: Spec) -> None:
 
 
 def _normalise(data: dict[str, Any]) -> dict[str, Any]:
-    """Mask what the oracle does not model: W005 positions (oracle: none) and W007 wording."""
+    """Mask what the oracle does not model: W005 positions (oracle: none), W007 wording and W008 (not modelled)."""
     rows = []
     for w in data["warnings"]:
+        if w["code"] == "W008":
+            continue
         if w["code"] == "W005":
             w = {**w, "line": None, "column": None}
         if w["code"] == "W007":

@@ -1,0 +1,1 @@
+{% macro chip(c) %}<span class="rt-indicator{% if c.mark %} rt-indicator--{{ c.tone }}{% endif %}" data-indicator="{{ c.kind }}" data-mark="{{ c.mark }}" data-tone="{{ c.tone }}" title="{{ c.title }}">{% if c.glyph %}<span class="rt-indicator__glyph" aria-hidden="true">{{ c.glyph }}</span>{% endif %}{{ c.text }}</span>{% endmacro %}

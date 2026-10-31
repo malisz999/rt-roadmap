@@ -39,7 +39,7 @@ SCHEMA = FIXTURES / "roadmap.schema.json"
 
 PL_MAP = "Projekt=name,Rozmiar=size,Zespół=team,Start=start,Zależności=depends_on,Ciągły=ongoing,Opis=description"
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 DIAG_RE = re.compile(

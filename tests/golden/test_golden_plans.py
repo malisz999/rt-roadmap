@@ -38,7 +38,7 @@ def test_at_01_worked_example_plan(we_render: Rendered) -> None:
 
 def test_at_01_plan_rt_version(we_render: Rendered) -> None:
     """PL-1/section 8: rt_version is the tool version (masked in the byte comparison)."""
-    assert we_render.plan["rt_version"] == "1.1.0"
+    assert we_render.plan["rt_version"] == "1.2.0"
     assert we_render.plan_bytes.endswith(b"}\n"), "plan must end with a single trailing newline"
     assert b"\r" not in we_render.plan_bytes
 

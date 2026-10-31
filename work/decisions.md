@@ -13,6 +13,14 @@ Tester questions with more detail: `work/questions.md` (Q-1 … Q-7).
 | RS 12.3 | Dependency lag or start-to-start links? | No: finish-to-start only, as in version 1. |
 | ADS 13.2 | PyPI name | Keep `rt-roadmap` (PyPI publishing stays commented out in `release.yml` until first release). |
 
+## CR-2 Team indicators (implemented 31 Oct 2026)
+
+`work/cr-team-indicators.md` is built in full (rt 1.2.0): DEV per slot and DEV per QA per team, marked when more
+than 50 % from the median or outside roadmap-wide `team_norms` (higher is worse: red; lower is better: green),
+label chips, `--summary` KPI tiles and "Team composition" table, plan fields
+and `team_indicators`, hooks, schema, oracle, AT-66 … AT-74. Owner decisions Q1–Q5 are in the CR (section 9);
+implementation refinements N1–N8 in its section 10.
+
 ## CR-1 Products (implemented 29 Oct 2026)
 
 `work/cr-products.md` is built in full: RS and ADS updated (sections listed at the top of each), 32-colour palette,

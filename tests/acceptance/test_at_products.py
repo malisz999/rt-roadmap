@@ -96,7 +96,7 @@ def test_at_56_products_plan_is_golden(pe_render: Rendered) -> None:
     assert json.loads(PE_PLAN.read_text(encoding="utf-8")) == oracle
     plan = pe_render.plan
     keys = list(plan)
-    assert keys.index("products") == keys.index("teams") + 1
+    assert keys.index("products") == keys.index("team_indicators") + 1 == keys.index("teams") + 2
     project_keys = list(plan["projects"][0])
     assert project_keys.index("product") == project_keys.index("team") + 1
 

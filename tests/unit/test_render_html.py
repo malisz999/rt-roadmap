@@ -49,8 +49,8 @@ def test_file_rules() -> None:
     assert doc.findtext(".//title") == "Scheduling worked example"
     assert len(doc.cssselect("style")) == 1 and not doc.cssselect("script")
     assert 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' in text
-    assert "size: A3 landscape" in text and "print-color-adjust: exact" in text and "break-inside: avoid" in text
-    assert "prefers-color-scheme: dark" in text
+    assert "size:A3 landscape" in text and "print-color-adjust:exact" in text and "break-inside:avoid" in text
+    assert "prefers-color-scheme:dark" in text
     for attr in ("src", "href"):
         assert not [e for e in doc.iter() if isinstance(e.tag, str) and re.match(r"(https?:|//)", e.get(attr, ""))]
     assert not re.search(r"url\(\s*['\"]?(https?:|//)", text)
@@ -62,7 +62,7 @@ def test_stylesheet_is_compact_and_keeps_declarations_readable() -> None:
     css = stylesheet()
     assert "/*" not in css and "\n" not in css
     assert len(css.encode()) < 18_000
-    assert compact_css("a {\n  color: red; /* x */\n}\n") == "a{color: red;}"
+    assert compact_css("a, b {\n  color: red; /* x */\n}\n") == "a, b{color:red;}"
 
 
 def test_conditional_hooks_are_absent_when_their_feature_is_off() -> None:
@@ -112,7 +112,7 @@ def test_bars_hooks_and_geometry() -> None:
     maintenance = bar(doc, "Maintenance")
     assert maintenance.get("style").startswith("left: 242.00px; width: 476.00px;")
     assert "continues" in maintenance.get("data-flags") and "rt-bar--ongoing" in maintenance.get("class")
-    assert '.rt-bar--ongoing::after{content: "∞"' in stylesheet()
+    assert '.rt-bar--ongoing::after{content:"∞"' in stylesheet()
     assert bar(doc, "Core API").cssselect(".rt-bar__chip")[0].text == "L · 8w"
     assert "rt-bar--tip-end" in bar(doc, "Big bang").get("class")
     # AT-02: one bar per visible project, attributes equal to the plan
@@ -210,7 +210,7 @@ def test_summary_section() -> None:
     over = parse(render(plankit.plan_from_file(plankit.WE, on_conflict="overflow"), True))
     hot = over.cssselect('.rt-load-cell[data-row="alpha"][data-month="2027-01"]')[0]
     assert hot.text == "140 %" and "rt-bin-4" in hot.get("class")
-    assert ".rt-bin-4 { background: #FCA5A5" in stylesheet().replace("{", " { ").replace("  ", " ")
+    assert ".rt-bin-4{background:#FCA5A5" in stylesheet()
     assert over.cssselect('.rt-lane[data-overflow="true"]')
     assert "Over capacity" in over.cssselect(".rt-team__slot--over")[0].text_content()
     assert over.cssselect(".rt-lane--overflow") and "rt-bar--over" in over.cssselect(".rt-lane--overflow .rt-bar")[
@@ -229,7 +229,7 @@ def test_dependency_connectors() -> None:
     assert product.cssselect("svg.rt-deps")[0].get("xmlns") is None
     for name in ("Load testing", "Release audit"):
         assert "rt-bar--dep-ext" in bar(doc, name).get("class").split()  # `↤` comes from CSS content
-    assert '.rt-bar--dep-ext::before{content: "↤"}' in stylesheet()
+    assert '.rt-bar--dep-ext::before{content:"↤"}' in stylesheet()
     assert "After: API v2 (Product › API), Web checkout (Product › Web)" in bar(doc, "Load testing").get("title")
     design = bar(doc, "Design system")
     assert design.get("data-requested") == "auto" and "auto_start" in design.get("data-flags")

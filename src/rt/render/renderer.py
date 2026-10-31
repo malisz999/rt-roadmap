@@ -37,13 +37,16 @@ def stylesheet() -> str:
 _COMMENT = re.compile(r"/\*.*?\*/", re.S)
 _AROUND_PUNCT = re.compile(r"\s*([{};])\s*")
 _SPACE = re.compile(r"\s+")
+_AFTER_COLON = re.compile(r": ")
 
 
 def compact_css(text: str) -> str:
-    """Drop comments and the whitespace around braces and semicolons; `property: value` keeps its space."""
+    """Drop comments, the whitespace around braces and semicolons, and the space after `:` (`left:24px`).
+    Commas keep their space, so the font stack reads exactly as RS OUT-3 writes it; no `content` string in the
+    stylesheet contains `: `."""
     text = _COMMENT.sub("", text)
     text = _AROUND_PUNCT.sub(r"\1", text)
-    return _SPACE.sub(" ", text).strip()
+    return _AFTER_COLON.sub(":", _SPACE.sub(" ", text)).strip()
 
 
 def render_html(page: PageVM) -> str:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from fractions import Fraction
 
 import pytest
 from iokit import MINIMAL, TODAY, build, codes, doc, messages
@@ -425,3 +426,47 @@ def test_products_must_be_a_list() -> None:
     model, diags = build(MINIMAL.replace("projects:\n", "products: {}\nprojects:\n"))
     assert model is not None and model.products == ()
     assert messages(diags) == ['"products" must be a list, got a mapping']
+
+
+# --- team_norms (RS 3.2, 7.13) --------------------------------------------------------------------------------
+
+
+def test_team_norms_parse_exact_bounds() -> None:
+    text = MINIMAL.replace(
+        "subdomains:\n", "team_norms:\n  devs_per_slot: { min: 2, max: 2.5 }\n  devs_per_qa: { max: 3 }\nsubdomains:\n"
+    )
+    model, diags = build(text)
+    assert model is not None and not diags.items
+    norms = model.team_norms
+    assert norms.devs_per_slot is not None and norms.devs_per_qa is not None
+    assert (norms.devs_per_slot.min, norms.devs_per_slot.max) == (2, Fraction(5, 2))
+    assert (norms.devs_per_qa.min, norms.devs_per_qa.max) == (None, 3)
+
+
+def test_team_norms_errors() -> None:
+    text = MINIMAL.replace(
+        "subdomains:\n",
+        "team_norms:\n"
+        "  devs_per_slots: { min: 1 }\n"
+        "  devs_per_slot: { min: 5, max: 2 }\n"
+        "  devs_per_qa: { min: two, max: 1000, mid: 2 }\n"
+        "subdomains:\n",
+    )
+    model, diags = build(text)
+    assert model is not None
+    assert codes(diags) == [("E002", 8, 3), ("E012", 9, 33), ("E011", 10, 23), ("E012", 10, 33), ("E002", 10, 39)]
+    msgs = messages(diags)
+    assert msgs[0] == 'unknown key "devs_per_slots" in team_norms (did you mean "devs_per_slot"?)'
+    assert msgs[1] == '"team_norms.devs_per_slot": max must not be below min (5)'
+    assert msgs[2] == '"min" must be a number, got "two"'
+    assert msgs[3] == '"max" must be 0–999, got 1000'
+    assert msgs[4] == 'unknown key "mid" in team_norms.devs_per_qa (did you mean "min"?)'
+    assert model.team_norms.devs_per_slot is not None and model.team_norms.devs_per_slot.max is None
+
+
+def test_team_norms_odd_values() -> None:
+    text = MINIMAL.replace("subdomains:\n", "team_norms:\n  devs_per_slot: { min: .inf, max: true }\nsubdomains:\n")
+    _, diags = build(text)
+    assert [c for c, _, _ in codes(diags)] == ["E012", "E011"]
+    _, diags = build(MINIMAL.replace("subdomains:\n", "team_norms: [1]\nsubdomains:\n"))
+    assert messages(diags) == ['"team_norms" must be a mapping, got a list']

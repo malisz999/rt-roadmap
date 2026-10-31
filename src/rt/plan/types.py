@@ -15,6 +15,7 @@ from fractions import Fraction
 from rt.color.types import ColorRef
 from rt.diagnostics import Diagnostic
 from rt.model.types import Mode, ResolvedModel
+from rt.schedule.indicators import Indicators
 from rt.timeutil import Month
 
 NOT_JSON = {"json": False}
@@ -36,7 +37,29 @@ class TeamPlan:
     slots: int
     overflow_lanes: int
     utilization: Decimal  # 4 decimals, half up (RS OUT-13, PL-5)
+    developers: int | None = None  # team indicators (RS 7.13); None without capacity
+    testers: int | None = None
+    devs_per_slot: Decimal | None = None
+    devs_per_qa: Decimal | None = None
+    indicator_flags: tuple[str, ...] = ()  # sorted
     utilization_exact: Fraction = field(default=Fraction(0), metadata=NOT_JSON)
+
+
+@dataclass(frozen=True, slots=True)
+class IndicatorPlan:
+    """Roadmap-wide value, median and band of one team indicator (RS 7.13, PL-8)."""
+
+    all: Decimal | None
+    median: Decimal | None
+    low: Decimal | None
+    high: Decimal | None
+    source: str | None  # norm | median | None
+
+
+@dataclass(frozen=True, slots=True)
+class TeamIndicatorsPlan:
+    devs_per_slot: IndicatorPlan
+    devs_per_qa: IndicatorPlan
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,9 +153,11 @@ class Plan:
     horizon: HorizonOut
     on_conflict: Mode
     teams: tuple[TeamPlan, ...]
+    team_indicators: TeamIndicatorsPlan
     products: tuple[ProductPlan, ...]  # file order = legend order
     projects: tuple[PlannedProject, ...]
     monthly_load: MonthlyLoad
     warnings: tuple[PlanWarning, ...]  # sorted by line, column, code
     model: ResolvedModel = field(metadata=NOT_JSON)  # names, capacities, sizes, settings for the renderer
     diagnostics: tuple[Diagnostic, ...] = field(default=(), metadata=NOT_JSON)  # all warnings of the run, sorted
+    indicators: Indicators | None = field(default=None, metadata=NOT_JSON)  # exact values and marks for the page
