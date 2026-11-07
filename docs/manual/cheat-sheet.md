@@ -1,4 +1,4 @@
-# rt cheat sheet (rt 1.2)
+# rt cheat sheet (rt 1.3)
 
 YAML in → one offline HTML roadmap out. Full guide: [user-manual.md](user-manual.md).
 
@@ -12,8 +12,7 @@ rt convert projects.csv --base teams.yaml [--map "Projekt=name,Rozmiar=size"] -o
 rt schema -o roadmap.schema.json          # then first line: # yaml-language-server: $schema=./roadmap.schema.json
 ```
 
-Override per run: `--from 2027-04 --to 2027-06` · `--today 2027-03-01` · `--on-conflict delay|overflow|error` ·
-`--plan plan.json` · `-q`. Pipe: `rt convert x.csv --base b.yaml | rt render -o out.html`.
+Per run: `--from 2027-04 --to 2027-06` · `--today 2027-03-01` · `--on-conflict delay|overflow|error` · `--plan p.json` · `-q`.
 
 ## The file
 
@@ -42,13 +41,14 @@ projects:                               # ORDER = PRIORITY
     product: blik                       # optional
     size: L                             # OR  ongoing: true  (never both)
     start: 2027-01                      # optional; omit = first free slot
+    locked: true                        # optional: start PROMISED; first, never moved (+ promised_to: X)
     depends_on: [other-id]              # ids or unique names, written ABOVE; finish-to-start
-    color: sky                          # optional pin (palette name or "#RRGGBB"); wins over product
 ```
 
 ## How scheduling works
 
-- Top to bottom, each project goes to the **lowest free slot** at the **earliest date**; later ones may backfill gaps.
+- **Locked** projects first, exactly at their start. Then the rest top to bottom: each goes to the **lowest free slot**
+  at the **earliest date**; later ones may backfill gaps. A promise that cannot be kept stays put → **W015**, red.
 - `start: 2027-03` = requested 1 Mar; if busy → starts later, **W001 delayed**. No `start` = whenever free, never delayed.
 - `ongoing: true` holds a slot forever from its start. All slots ongoing → **E060**.
 - `scheduling: { on_conflict: delay }` waits · `overflow` adds red `+1` lanes (W011) · `error` stops with E061.
@@ -57,20 +57,19 @@ projects:                               # ORDER = PRIORITY
 
 `+4w` + dashed line = delayed from requested start · stripes + `∞` = ongoing · arrow = dependency (same domain) ·
 `↤` = dependency in another domain · `‹ ›` = cut at horizon · red dashed / hatched `+1` lane = over capacity ·
-red line = Today · dotted line = quarter.
+dark frame + padlock = locked · red frame + red padlock = promise at risk · red line = Today · dotted line = quarter.
 Team indicators: **DEV/slot** = devs ÷ slots, **DEV/QA** = devs ÷ testers; higher is worse: red `▲` above normal,
 green `▼` below, red `! no QA`. Normal = `team_norms`, else median ±50 % (needs ≥ 3 teams).
 
 ## CSV import
 
-Columns `name`, `size` (required), `team`, `product`, `start` (`2027-03`/`01.03.2027`), `ongoing` (yes/tak/x), `depends_on`
-(`a|b`), `id`, `description`, `color`; others ignored (W020). Excel "CSV UTF-8" or `--encoding cp1250`.
+Columns `name`, `size` (required), `team`, `product`, `start` (`2027-03`/`01.03.2027`), `ongoing` (yes/tak/x), `locked` (1/0),
+`promised_to`, `depends_on` (`a|b`), `id`, `description`, `color`; others ignored (W020). Excel "CSV UTF-8" or `--encoding cp1250`.
 
 ## Pitfalls and diagnostics
 
 `name: Fix #12` → "Fix" (` #` = comment) → quote it · `name: Phase 2: rollout` → E001 → quote it ·
-`color: "#FFD6A5"` needs quotes · spaces, never tabs · Polish letters and `no`/`yes` are fine.
-
+`color: "#FFD6A5"` (palette name or hex pin) needs quotes · spaces, never tabs · Polish letters and `no`/`yes` are fine.
 **E002** typo in a key (see "did you mean") · **E030** use the team *id* · **E031** size labels are case-sensitive ·
 **E032** `size` *or* `ongoing` · **E034/E035/E037** dependency unknown, ambiguous or below → use an `id`, move it
-above · **E060** all slots ongoing · **W001** delayed. Exit: **0** ok · **1** errors · **2** usage · **3** E060/E061 · **4** I/O.
+above · **E050** locked without start · **E060** all slots ongoing · **W001** delayed · **W015** promise at risk. Exit: **0** ok · **1** errors · **2** usage · **3** E060/E061 · **4** I/O.

@@ -39,6 +39,7 @@ from rt.schedule.types import (
     REASON_CAPACITY,
     REASON_DEPENDENCY,
     Horizon,
+    Placement,
     Schedule,
     Visibility,
 )
@@ -97,8 +98,31 @@ def _why(reason: str | None, team: str) -> str:
     return f'waiting for dependencies, then no free slot in team "{team}"'
 
 
+def late_dependency(m: ResolvedModel, s: Schedule, pl: Placement) -> Placement | None:
+    """The dependency of a locked project that ends last, when it ends after the promised start (RS SC-15)."""
+    late = [d for d in (s.placement(seq) for seq in m.deps.get(pl.seq, ())) if d.end is not None and d.end > pl.start]
+    return max(late, key=lambda d: (d.end, -d.seq)) if late else None
+
+
+def _risk_why(m: ResolvedModel, s: Schedule, pl: Placement) -> str:
+    """W015 reason: the late dependency, the full team, or both (RS 9.2)."""
+    parts: list[str] = []
+    dep = late_dependency(m, s, pl)
+    if dep is not None and dep.end is not None:
+        parts.append(f'depends on "{m.model.project(dep.seq).name}", which ends {dep.end.isoformat()}')
+    if pl.overflow:
+        slots = m.model.team(pl.team_id).slots
+        taken = (
+            f'the only slot of team "{pl.team_id}" is'
+            if slots == 1
+            else f'all {slots} slots of team "{pl.team_id}" are'
+        )
+        parts.append(f"{taken} taken by locked projects; shown in overflow lane +{pl.lane - slots}")
+    return "; ".join(parts)
+
+
 def project_warnings(m: ResolvedModel, s: Schedule, vis: Mapping[int, Visibility], diags: Collector) -> None:
-    """Per project, in the oracle's order: W004, W001, W011, W002, W003."""
+    """Per project, in the oracle's order: W004, W001, W015 or W011, W002, W003."""
     for pl in s.placements:
         p = m.model.project(pl.seq)
         flags = vis[pl.seq].flags
@@ -114,7 +138,9 @@ def project_warnings(m: ResolvedModel, s: Schedule, vis: Mapping[int, Visibility
                 start=pl.start.isoformat(),
                 why=_why(pl.delay_reason, pl.team_id),
             )
-        if pl.overflow:
+        if pl.lock_risk is not None:  # CR-3: replaces W011 for a locked project in an overflow lane
+            diags.warning(Code.W015, p.pos, project=p.name, start=pl.start.isoformat(), why=_risk_why(m, s, pl))
+        elif pl.overflow:
             slots = m.model.team(pl.team_id).slots
             diags.warning(Code.W011, p.pos, project=p.name, team=pl.team_id, lane=pl.lane - slots)
         if CLIPPED_LEFT in flags:
@@ -240,6 +266,8 @@ def _planned(
         size=None if p.ongoing else p.size,
         weeks=None if p.ongoing else m.weeks.get(seq),
         ongoing=p.ongoing,
+        locked=pl.locked,
+        promised_to=p.promised_to if pl.locked else None,
         requested_start=pl.requested,
         depends_on=tuple(sorted(m.deps.get(seq, ()))),
         earliest_start=pl.earliest,
@@ -250,6 +278,7 @@ def _planned(
         overflow=pl.overflow,
         delay_days=pl.delay_days,
         delay_reason=pl.delay_reason,
+        lock_risk=pl.lock_risk,
         visible=None if v.start is None or v.end is None else VisibleOut(v.start, v.end),
         color_index=None if color is None else color.index,
         color_name=None if color is None else color.name,

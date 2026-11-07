@@ -4,6 +4,7 @@ Oct 23, 2026 · @Artur
 
 Revised Oct 29, 2026: CR-1 products (sections 2, 3.2, 3.4, 5, 6.6, 7.2, 7.10, 8, 9, 11.7, 12.1, 13.2).
 Revised Oct 31, 2026: CR-2 team composition indicators (sections 2, 3.1, 3.2, 7.5, 7.8, 7.10, 7.12, 7.13, 8, 11.8, 12.1).
+Revised Nov 7, 2026: CR-3 locked projects (sections 1.3, 2, 3.1, 3.2, 3.4, 4.2, 4.6, 6.6, 7.2, 7.6, 7.8, 7.10, 7.12, 8, 9, 11.9, 12.1, 13.2).
 
 ## 1. Introduction
 
@@ -29,8 +30,8 @@ Revised Oct 31, 2026: CR-2 team composition indicators (sections 2, 3.1, 3.2, 7.
 **In scope (version 1):**
 
 - Input: one YAML file (JSON also accepted, being valid YAML 1.2), read from a path or from standard input. Project names and other text may be in Polish.
-- Definitions: subdomains, teams (role capacity, parallel project slots), t-shirt sizes in weeks, projects (name, size or ongoing, team, optional start month, optional dependencies), optional products (named groups of projects owned by one domain, drawn in one colour).
-- Scheduling: deterministic slot assignment in file order, honouring finish-to-start dependencies, with conflict handling (`delay`, `overflow` or `error`).
+- Definitions: subdomains, teams (role capacity, parallel project slots), t-shirt sizes in weeks, projects (name, size or ongoing, team, optional start month, optional dependencies, optional lock on a promised start), optional products (named groups of projects owned by one domain, drawn in one colour).
+- Scheduling: deterministic slot assignment, locked projects first at their promised start, then all others in file order, honouring finish-to-start dependencies, with conflict handling (`delay`, `overflow` or `error`).
 - Output: one HTML file with embedded CSS, no external resources, no JavaScript required; quarters labelled Q1–Q4; optional summary section with monthly load (`--summary`). Written to a file or to standard output.
 - Command chaining: every command reads standard input and writes standard output, so commands combine with each other and with other tools in shell pipelines (section 6.5).
 - Spreadsheet import: `rt convert` turns a CSV project list with named columns (at least project name and size) into a valid rt YAML file, optionally merged into a base file that holds teams and settings (sections 3.4, 6.6).
@@ -54,6 +55,8 @@ Revised Oct 31, 2026: CR-2 team composition indicators (sections 2, 3.1, 3.2, 7.
 | Owning domain | The subdomain that owns a project: its product's `domain`, or for a standalone project its team's subdomain. Shown in the tooltip and the legend; bars stay in the section of the team that does the work. |
 | Standalone project | A project without `product`. Coloured from palette entries 0–9 as in version 1. |
 | Team indicators | DEV per slot (developers ÷ `parallel_projects`) and DEV per QA (developers ÷ testers): ratios that compare team composition across the roadmap (section 7.13). |
+| Locked project | A project with `locked: true`: its start month has been promised to the business, a customer or a partner. It is placed before all other projects, exactly at its start, and never moved (SC-14). |
+| Promise at risk | A locked project that cannot keep its date: a dependency ends after its start, or other locked work fills every slot of its team (SC-15). It stays at its date and is flagged. |
 | Dependency | Finish-to-start link: a project cannot start before each project it depends on has ended. |
 | Anchor | The earliest date for projects without a `start`: the horizon start if given, else the 1st of the current month (SC-12). |
 | Auto-start project | A project without `start`; it starts as soon as its dependencies have ended and a slot is free. |
@@ -122,6 +125,8 @@ projects:                  # required: sequence = file order
     product: blik-online   # optional: the bar takes the product's colour
     size: L
     start: 2027-01
+    locked: true           # optional: the start is promised; never moved
+    promised_to: Allegro   # optional, only with locked: true
   - name: Pay-by-link redesign
     team: blik
     size: M                # no start: as soon as a slot is free
@@ -215,6 +220,8 @@ An indicator with a band is marked against its written bounds only (a missing bo
 | `start` | month | No | `YYYY-MM`; requested start = 1st of that month. Omitted → auto-start (SC-12) |
 | `size` | string | One of | Must be a key of `sizes` |
 | `ongoing` | boolean | One of | `true` marks a never-ending project. Exactly one of `size` or `ongoing: true` MUST be present. |
+| `locked` | boolean | No (`false`) | `true` or `false` (other values are E011). `true` marks the start month as promised: the project is placed first and never moved (SC-14). A locked project MUST have a `start` (E050). Ongoing projects may be locked |
+| `promised_to` | string | No | 1–100 characters: who the date was promised to. Allowed only with `locked: true` (E051). Shown in the tooltip and the Commitments table |
 | `depends_on` | list of strings | No | Each item is a project `id`, or a project `name` that is unique in the whole file. Every referenced project MUST appear earlier in the file, MUST NOT be ongoing, and MUST NOT be the project itself. Cross-team and cross-subdomain references are allowed. |
 | `description` | string | No | ≤ 500 characters, shown in the tooltip |
 | `color` | string | No | Palette name (section 5.3) or `#RRGGBB`; pins the colour, also over the product's colour |
@@ -254,6 +261,8 @@ A CSV project list holds one project per row under a header row of column names.
 | `subdomain` | No | Subdomain name; used only when no base file is given | — (skeleton, CV-14) |
 | `start` | No | `YYYY-MM`, `YYYY-MM-DD` or `DD.MM.YYYY`; empty = auto-start | `start` (`YYYY-MM`) |
 | `ongoing` | No | `true`, `yes`, `y`, `1`, `x`, `tak`, `t` or `false`, `no`, `n`, `0`, `nie`, empty; case-insensitive | `ongoing: true` when true, else omitted |
+| `locked` | No | The same values as `ongoing` (so `1`/`0` work) | `locked: true` when true, else omitted |
+| `promised_to` | No | Free text | `promised_to` |
 | `depends_on` | No | Project ids or names separated by `\|` or line breaks | `depends_on` (flow list) |
 | `id` | No | Project id | `id` |
 | `description` | No | Free text | `description` |
@@ -266,7 +275,7 @@ A CSV project list holds one project per row under a header row of column names.
 - **CV-8 Cells** are trimmed and NFC-normalised; an empty optional cell omits the field.
 - **CV-9 Size.** Exact label match, else a unique case-insensitive match (`m` → `M`), else error E031. An empty size when `ongoing` is not true is error E032.
 - **CV-10 Start.** `YYYY-MM-DD` and `DD.MM.YYYY` are reduced to their month; a day other than 01 gives warning W021. Any other value is error E013.
-- **CV-11 Ongoing.** A value outside the two lists is error E011.
+- **CV-11 Ongoing and locked.** A value outside the two lists is error E011.
 - **CV-12 Dependencies** follow section 3.2: each item is a project id or a name unique in the result, and must refer to an earlier row (E034–E037).
 
 Example `projects.pl.csv` (semicolon-delimited, UTF-8 with BOM, Polish headers, an ignored owner column):
@@ -282,7 +291,7 @@ Widżety Android;S;app;2027-03-15;;;;
 
 ## 4. Time model and scheduling
 
-Every project gets a slot and an exact `[start, end)` date interval, computed deterministically by walking `projects[]` in file order and putting each one into the lowest-numbered slot that is free at the earliest possible date.
+Every project gets a slot and an exact `[start, end)` date interval, computed deterministically: locked projects first, at their promised start (SC-14), then walking the other projects in file order and putting each one into the lowest-numbered slot that is free at the earliest possible date.
 
 ### 4.1 Time model
 
@@ -306,6 +315,8 @@ Every project gets a slot and an exact `[start, end)` date interval, computed de
 - **SC-8** Slots are numbered from 1. Ties always go to the lowest slot number, then to the earliest date.
 - **SC-12 Auto-start.** A project without `start` starts as soon as its dependencies have ended and a slot is free. Its base date (the anchor) is the 1st day of the horizon start month when the horizon start is given in the file or by `--from`, otherwise the 1st day of the month of `today`. In every mode, auto-start projects are placed with the SC-5 search, so they never use overflow lanes and never cause E061.
 - **SC-13 Dependencies.** Links are finish-to-start: a project may start on the end date (exclusive) of its last dependency. Dependencies MUST point to projects earlier in the file, so they are always placed first and cycles cannot occur. A dependency that lies outside the horizon still counts.
+- **SC-14 Locked projects first (CR-3).** Scheduling runs in two passes. **Pass 1** places every locked project, in file order, at `R` = day 1 of its `start` month, whatever its dependencies: into the lowest regular slot free for `[R, R + duration)` (`[R, ∞)` when ongoing); only locked projects are on the board then. When no regular slot is free, it goes into the first overflow lane free at `R`, or a new one, in every `on_conflict` mode. **Pass 2** places every unlocked project in file order exactly as SC-5 to SC-8 and SC-12 describe, with the locked intervals already in the slots: unlocked work goes around them (a requested start on a locked interval gives a `capacity` delay). A locked project is never `delayed`: `delay_days` 0, `delay_reason` `null`.
+- **SC-15 Promise at risk.** After both passes, a locked project's earliest start is `E = max(R, end of every dependency)`. Its `lock_risk` is `dependency` when `E > R`, `capacity` when it lies in an overflow lane, `dependency+capacity` for both, else `null`. A locked project with a lock risk has flag `at_risk` and gives W015 (instead of W011); it keeps its date. Locked projects never cause E061.
 
 ### 4.3 Horizon and visibility
 
@@ -352,6 +363,22 @@ Fixture `dependencies-example.yaml`. Sizes S = 2 w, M = 4 w, L = 8 w. Subdomain 
 | 8 | Release audit | Ops | S | 2027-02-01 | 2 | 2027-03-26 | 2 | 2027-04-09 | 2027-04-23 | 67 d | dependency+capacity | delayed |
 
 Project 6 depends on a project in another subdomain (OUT-28 shows such links without a connector line). Project 7's dependency ended before its requested start, so it is not delayed. Project 8 waits 53 days for its dependency, then 14 more for a free Ops slot. Auto horizon end: latest last day 2027-04-22, extended to the 6-month minimum, so 2027-01 to 2027-06.
+
+### 4.6 Worked example: locked projects
+
+Fixture `lock-example.yaml` ("LE"). Sizes S = 2 w, M = 4 w, L = 8 w. Subdomain *Core*: team **Alpha** (1 slot), team **Beta** (2 slots). Horizon 2027-01 to 2027-06, today 2027-01-15, mode `delay`. The tester MUST assert this table and `lock-example.expected.json` exactly.
+
+| # | Project | Team | Size | Requested | Locked (promised to) | Depends on | Pass | Lane | Actual start | End (excl.) | Delay | Lock risk | Flags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Core API | Alpha | L | 2027-01-01 | — | — | 2 | 1 | 2027-03-01 | 2027-04-26 | 59 d capacity | — | delayed |
+| 2 | Partner launch | Alpha | M | 2027-02-01 | Partner X | — | 1 | 1 | 2027-02-01 | 2027-03-01 | 0 | — | locked |
+| 3 | Mobile release | Beta | M | 2027-03-01 | Retail bank | 1 | 1 | 1 | 2027-03-01 | 2027-03-29 | 0 | dependency (earliest 2027-04-26) | at\_risk, locked |
+| 4 | Data migration | Beta | S | 2027-03-01 | yes | — | 1 | 2 | 2027-03-01 | 2027-03-15 | 0 | — | locked |
+| 5 | Audit | Beta | S | 2027-03-01 | Regulator | — | 1 | 3 (+1) | 2027-03-01 | 2027-03-15 | 0 | capacity | at\_risk, locked, over\_capacity |
+| 6 | Reporting | Beta | M | 2027-03-01 | — | — | 2 | 2 | 2027-03-15 | 2027-04-12 | 14 d capacity | — | delayed |
+| 7 | Polish | Beta | S | — | — | 2 | 2 | 1 | 2027-03-29 | 2027-04-12 | — | — | auto\_start |
+
+Partner launch is written after Core API but keeps February; Core API yields. Mobile release keeps its promised 1 March although Core API now ends on 26 April (W015). Three locked projects ask for Beta's two slots on 1 March; Audit, written last, keeps its date in an overflow lane (W015, no W011). With `--on-conflict overflow`, Core API runs from 1 January in Alpha lane 2 (W011), so Mobile release is on track; Reporting takes Beta lane 4. With `--on-conflict error`, E061 is reported for Core API and Reporting only.
 
 ## 5. Colour assignment
 
@@ -549,7 +576,7 @@ Shell note for Windows: cmd.exe and PowerShell 7.4+ pass bytes through pipes unc
   - first line `# Generated by rt convert from <CSV file name>. Edit freely.` — the name without directories, or `<stdin>`; no date, so output is reproducible;
   - with a base, the base text follows, comments and key order kept, indentation normalised as below; its `projects` list replaced;
   - mappings indented 2 spaces, list items written ` -  ` indented 2 spaces under their key (as in all examples); no line wrapping; UTF-8, LF; Polish letters written as-is;
-  - project keys in the order `id, name, team, product, start, size, ongoing, depends_on, description, color`, absent ones omitted; `team` and `product` are always ids; `depends_on` is a flow list `[a, b]`;
+  - project keys in the order `id, name, team, product, start, size, ongoing, locked, promised_to, depends_on, description, color`, absent ones omitted; `team` and `product` are always ids; `depends_on` is a flow list `[a, b]`;
   - scalars are written plain unless a YAML reader would take them for another type or for YAML syntax, in which case they are quoted.
 - **CV-19 Determinism.** The same CSV bytes, base file and options give byte-identical YAML, so re-running convert on unchanged input shows no diff in version control.
 - **CV-20 Equivalence.** `rt convert x.csv | rt render -o a.html` produces the same HTML as converting to a file and rendering that file.
@@ -615,7 +642,7 @@ The output is one static HTML5 file that opens offline in any current browser an
 ### 7.2 Page structure (top to bottom)
 
 1. **Header** — title (h1), subtitle, horizon ("Jan 2027 – Dec 2027"), "As of 23 Oct 2026".
-2. **Legend** — size chips in declaration order (`S 2w`, `M 4w`…), then the symbols for ongoing, delayed, dependency, clipped, over capacity, quarter line and Today, then — only when the file has products — a "Products" row: one chip per product in file order with its colour, name, owning domain and owner (`BLIK · Kanały płatności · Anna Kowalska`).
+2. **Legend** — size chips in declaration order (`S 2w`, `M 4w`…), then the symbols for ongoing, delayed, dependency, clipped, over capacity, locked and promise at risk (these two only when the file has locked projects), quarter line and Today, then — only when the file has products — a "Products" row: one chip per product in file order with its colour, name, owning domain and owner (`BLIK · Kanały płatności · Anna Kowalska`).
 3. **Summary** — only with `--summary` (section 7.12).
 4. **Timeline header** — sticky to the top while scrolling: a year row, a quarter row (`Q1`…`Q4`) and a month row (`Jan`…`Dec`).
 5. **Subdomain sections** — one per subdomain in file order (h2), each holding its team swimlanes (h3) in file order.
@@ -649,11 +676,13 @@ The wireframe uses the worked example: delayed bars show a dashed lead line from
 
 - **OUT-16** Rounded rectangle (radius 6 px), palette fill, 4 px left border in the accent colour, text `#1E293B` 12.5 px weight 500.
 - **OUT-17** Content by drawn width: ≥ 120 px → name (ellipsis) plus a right-aligned chip `M · 4w`; 48–119 px → name only; < 48 px → no text.
-- **OUT-18** Every bar has a `title` tooltip and `aria-label` with: name; team; for product projects a line `Product: BLIK · owned by Kanały płatności (Anna Kowalska)` (the owner in brackets only when given); size and weeks or "Ongoing"; requested start; actual start; last day (`end − 1`); delay; description. Dates display as `29 Jan 2027`. A styled CSS tooltip on hover and keyboard focus SHOULD be added; bars have `tabindex="0"`.
+- **OUT-18** Every bar has a `title` tooltip and `aria-label` with: name; team; for product projects a line `Product: BLIK · owned by Kanały płatności (Anna Kowalska)` (the owner in brackets only when given); for locked projects `Locked: promised to Partner X · start fixed 1 Feb 2027` (without `promised to …` when not given) and, when at risk, `Promise at risk: depends on Core API (last day 25 Apr 2027)` or `… no free slot in team Beta (overflow lane +1)`; size and weeks or "Ongoing"; requested start; actual start; last day (`end − 1`); delay; description. Dates display as `29 Jan 2027`. A styled CSS tooltip on hover and keyboard focus SHOULD be added; bars have `tabindex="0"`.
 - **OUT-19** **Ongoing**: square right end, a light diagonal stripe overlay, a fade over the last 48 px, and an `∞` glyph inside the right edge.
 - **OUT-20** **Delayed**: a pill `+4w` after the name, and a dashed 1 px accent line running 3 px below the bar's bottom edge (in the gap between bar and lane edge, so it never crosses another bar) from `x(requested start)` to the bar, starting with a 5 px hollow circle. Delay label: `+Nd` when under 14 days, else `+Nw` with N = days ÷ 7 rounded half up.
 - **OUT-21** **Clipped**: the clipped edge is square and shows a chevron (`‹` left, `›` right).
 - **OUT-22** **Over capacity**: 2 px dashed `#DC2626` outline.
+- **OUT-35** **Locked** (CR-3): a 2 px solid frame in `--lock` (light `#0F172A`, dark `#F8FAFC`), 1 px outside the bar; a padlock icon (inline SVG, 11 × 13 px, the bar's text colour) before the name, shown at every width: a locked bar under 72 px (the 48 px text threshold plus 24 px for the padlock) shows only the padlock, centred; name weight 600. Fill colours are unchanged.
+- **OUT-36** **Promise at risk**: the frame and padlock are red (`--over`); on bars ≥ 120 px a red pill `! at risk` replaces the size chip. A locked bar in an overflow lane shows the at-risk frame instead of the dashed over-capacity outline.
 
 * **OUT-28** **Dependencies.** When a dependency and its successor are both drawn in the same subdomain card, an orthogonal connector is drawn: 1 px `#64748B`, a 5 px arrowhead, route = from the predecessor's right end at mid-height, 8 px right, along the nearest lane gap to 8 px left of the successor, then into the successor's left edge at mid-height. Connectors sit beneath the bars, so they never cover a label. When the two bars are in different subdomains, or one is hidden, no line is drawn; the successor shows a `↤` glyph at its left edge instead. The tooltip always lists dependencies as "After: API v2 (Product › API)".
 
@@ -676,7 +705,8 @@ The wireframe uses the worked example: delayed bars show a dashed lead line from
 | Month grid | `#E2E8F0` | `#1F2937` |
 | Year line | `#94A3B8` | `#475569` |
 | Today | `#E11D48` | `#FB7185` |
-| Over capacity | `#DC2626` | `#F87171` |
+| Over capacity, promise at risk | `#DC2626` | `#F87171` |
+| Locked frame (`--lock`) | `#0F172A` | `#F8FAFC` |
 | Bar text | `#1E293B` | `#1E293B` (bars keep light fills) |
 | Indicator worse: high, no QA (fill / text and outline) | `#FEE2E2` / `#B91C1C` | `#450A0A` / `#FCA5A5` |
 | Indicator better: low (fill / text and outline) | `#DCFCE7` / `#166534` | `#052E16` / `#86EFAC` |
@@ -708,6 +738,8 @@ These class names and attributes are a contract; tests and future tooling rely o
 | Team block (indicators) | `rt-team` | also `data-devs-per-slot`, `data-devs-per-qa` (4 decimals, empty when not defined), `data-indicator-flags` (space-separated, alphabetical) |
 | Indicator chip | `rt-indicator` | `data-indicator` (`devs_per_slot`, `devs_per_qa`), `data-mark` (`low`, `high`, `no_qa` or empty), `data-tone` (`bad` for high and no QA, `good` for low, or empty); classes `rt-indicator--bad` / `--good` |
 | Team composition table | `rt-composition` | rows `rt-composition-row`; team rows carry `data-team` |
+| Locked bar (CR-3) | `rt-bar--locked`, `rt-bar--risk` | `data-lock-risk` (`dependency`, `capacity`, `dependency+capacity` or empty) on every bar; `data-flags` may contain `locked`, `at_risk`; padlock `rt-bar__lock` |
+| Commitments table | `rt-commitments` | rows `rt-commitment` with `data-seq` and `data-status` (`on_track`, `at_risk`) |
 
 ### 7.11 Accessibility
 
@@ -719,9 +751,9 @@ These class names and attributes are a contract; tests and future tooling rely o
 The summary shows, at a glance, how loaded each team is per month: a KPI row plus a heatmap table whose month columns line up with the timeline below.
 
 - **OUT-29** Heading h2 "Summary", placed after the legend and before the timeline header; it scrolls horizontally with the timeline so months stay aligned.
-- **OUT-30** **KPI row** of tiles: Subdomains, Teams, Projects (finite), Ongoing, Delayed, Over capacity (overflow mode only), Slots (sum of `parallel_projects`), People (sum of all roles, with a `DEV · PM · BA · QA` breakdown), DEV per slot and DEV per QA (the All teams values of TI-4, `–` when not defined).
+- **OUT-30** **KPI row** of tiles: Subdomains, Teams, Projects (finite), Ongoing, Delayed, Over capacity (overflow mode only), Slots (sum of `parallel_projects`), People (sum of all roles, with a `DEV · PM · BA · QA` breakdown), DEV per slot and DEV per QA (the All teams values of TI-4, `–` when not defined); when the file has locked projects, Locked and At risk after Delayed (or Over capacity).
 - **OUT-31** **Monthly load table.** First column (280 px, sticky) holds row names; then one cell per horizon month, `month_width` px wide. Rows: for each subdomain in file order, a bold subdomain row followed by its team rows (indented 16 px); a final bold "All teams" row.
-- **OUT-32** Load of a team in a month = occupied slot-days of its projects inside that month (regular and overflow lanes, ongoing included) ÷ (`parallel_projects` × days in the month). Subdomain and "All teams" rows divide the summed numerators by the summed denominators. Over 100 % happens only in overflow mode. Note this differs from OUT-13 utilisation, which excludes overflow.
+- **OUT-32** Load of a team in a month = occupied slot-days of its projects inside that month (regular and overflow lanes, ongoing included) ÷ (`parallel_projects` × days in the month). Subdomain and "All teams" rows divide the summed numerators by the summed denominators. Over 100 % happens only in overflow mode, or when a locked project at risk sits in an overflow lane (SC-14). Note this differs from OUT-13 utilisation, which excludes overflow.
 - **OUT-33** Each cell shows the load as a whole percentage rounded half up (`0 %` shown as `–`), coloured by bin, with a tooltip "Alpha · Feb 2027 · 53 of 56 slot-days (95 %)".
 
 | Load | Fill | Text |
@@ -742,6 +774,7 @@ Expected load for the worked example (section 4.4), also in the expected plan's 
 | All teams | 67 % | 80 % | 67 % | 76 % | 67 % | 59 % |
 
 - **OUT-34** **Team composition table**, after the load table and its key: caption "Team composition"; columns Team · DEV · QA · Slots · DEV per slot · DEV per QA · Notes; rows grouped under a bold subdomain row as in OUT-31; then "All teams", "Median" and, when a band exists, "Normal range" (median ± 50 %) or "Norm" (`team_norms`). Values have one decimal; a marked value is a chip as in OUT-12; Notes name the marks ("DEV per slot high (worse)", "DEV per QA low (better)", "no QA", "no capacity given").
+- **OUT-37** **Commitments table** (CR-3), after the team composition table and only when the file has locked projects: caption "Commitments"; columns Project · Team · Product · Promised to · Start · Last day · Status; one row per locked project in file order; status `On track`, or a red `At risk` followed by the reason as in the tooltip.
 
 ### 7.13 Team indicators
 
@@ -776,11 +809,12 @@ Expected values for `roadmap.example.yaml` (DEV per slot median 2.0, band 1.0–
 - **PL-1** UTF-8 without escaping non-ASCII (Polish letters appear as-is), 2-space indent, LF line endings, trailing newline, keys in the order shown below.
 - **PL-2** Dates as `YYYY-MM-DD` strings; `end` is exclusive; ongoing projects have `end`, `last_day`, `size` and `weeks` set to `null`; auto-start projects have `requested_start` and `delay_reason` = `null` and `delay_days` = 0.
 - **PL-3** `projects` lists **every** project in file order, including ones outside the horizon (`visible`, `color_*` = `null`). `id` is `null` when not given. `depends_on` holds resolved `seq` numbers, ascending.
-- **PL-4** `flags` values: `auto_start`, `clipped_left`, `clipped_right`, `continues`, `delayed`, `hidden`, `over_capacity`; sorted alphabetically. `delay_reason`: `dependency`, `capacity`, `dependency+capacity` or `null`. `neighbors` = `seq` numbers of adjacent bars (CO-3), ascending.
+- **PL-4** `flags` values: `at_risk`, `auto_start`, `clipped_left`, `clipped_right`, `continues`, `delayed`, `hidden`, `locked`, `over_capacity`; sorted alphabetically. `delay_reason`: `dependency`, `capacity`, `dependency+capacity` or `null`. `neighbors` = `seq` numbers of adjacent bars (CO-3), ascending.
 - **PL-5** `utilization` and every `monthly_load` value are numbers rounded to 4 decimals.
 - **PL-6** `monthly_load` is always present (independent of `--summary`): `months`, then per-team, per-subdomain and `total` arrays aligned with `months` (OUT-32).
 - **PL-8** Each team has, after `utilization`: `developers`, `testers` (integers, `null` without `capacity`), `devs_per_slot`, `devs_per_qa` (4 decimals or `null`) and `indicator_flags` (TI-7). A top-level `team_indicators` object follows `teams`: `{ "devs_per_slot": { "all", "median", "low", "high", "source" }, "devs_per_qa": { … } }`; `low` / `high` are the band limits (`null` when not checked) and `source` is `"norm"`, `"median"` or `null`.
 - **PL-7** Each project has `product` (product id or `null`) right after `team`. A top-level `products` list follows `team_indicators`, in file order (empty when the file has none): `{ "id", "name", "domain", "owner", "color_index", "color_name", "color_fill", "projects" }`, with `owner` `null` when not given, `color_index` and `color_name` `null` for a custom hex colour, and `projects` the `seq` numbers of its projects (hidden ones included), ascending.
+- **PL-9** Each project has `locked` (boolean) and `promised_to` (string or `null`) right after `ongoing`, and `lock_risk` (`dependency`, `capacity`, `dependency+capacity` or `null`) right after `delay_reason`. For a locked project `earliest_start` is the SC-15 value; it is later than `start` exactly when `lock_risk` includes `dependency`.
 
 ```json
 {
@@ -802,9 +836,9 @@ Expected values for `roadmap.example.yaml` (DEV per slot median 2.0, band 1.0–
   "projects": [
     {
       "seq": 3, "id": null, "name": "Reporting", "team": "alpha", "product": null, "size": "M", "weeks": 4, "ongoing": false,
-      "requested_start": "2027-01-01", "depends_on": [], "earliest_start": "2027-01-01",
+      "locked": false, "promised_to": null, "requested_start": "2027-01-01", "depends_on": [], "earliest_start": "2027-01-01",
       "start": "2027-01-29", "end": "2027-02-26", "last_day": "2027-02-25",
-      "lane": 2, "overflow": false, "delay_days": 28, "delay_reason": "capacity",
+      "lane": 2, "overflow": false, "delay_days": 28, "delay_reason": "capacity", "lock_risk": null,
       "visible": { "start": "2027-01-29", "end": "2027-02-26" },
       "color_index": 1, "color_name": "green", "color_fill": "#BBF7D0",
       "flags": ["delayed"], "neighbors": [1, 2, 4, 5, 6, 8]
@@ -822,13 +856,13 @@ Expected values for `roadmap.example.yaml` (DEV per slot median 2.0, band 1.0–
 }
 ```
 
-The complete expected plans are the companion files `scheduling-worked-example.expected.json` (excerpt above), `dependencies-example.expected.json` and `products-example.expected.json`, whose products entry reads `{ "id": "blik", "name": "BLIK", "domain": "channels", "owner": "Anna Kowalska", "color_index": 10, "color_name": "blue", "color_fill": "#BFDBFE", "projects": [1, 3, 5] }`. W001 messages end with the reason: "no free slot in team …", "waiting for dependencies", or "waiting for dependencies, then no free slot in team …".
+The complete expected plans are the companion files `scheduling-worked-example.expected.json` (excerpt above), `dependencies-example.expected.json`, `lock-example.expected.json` and `products-example.expected.json`, whose products entry reads `{ "id": "blik", "name": "BLIK", "domain": "channels", "owner": "Anna Kowalska", "color_index": 10, "color_name": "blue", "color_fill": "#BFDBFE", "projects": [1, 3, 5] }`. W001 messages end with the reason: "no free slot in team …", "waiting for dependencies", or "waiting for dependencies, then no free slot in team …".
 
 ## 9. Errors and warnings
 
 Errors stop output (exit 1 or 3); warnings are reported and output is still written unless `--strict` is set. Codes are stable across versions; message wording may improve.
 
-Location rule: a diagnostic points to the offending node; project-level diagnostics (W001–W004, W011, E060, E061) point to the first key of that project's mapping, product-level warnings (W013, W014) to the first key of that product's mapping. E002, E010–E012 and E033 apply to product fields as to other entities.
+Location rule: a diagnostic points to the offending node; project-level diagnostics (W001–W004, W011, W015, E060, E061) point to the first key of that project's mapping, product-level warnings (W013, W014) to the first key of that product's mapping. E002, E010–E012 and E033 apply to product fields as to other entities.
 
 ### 9.1 Errors
 
@@ -862,6 +896,8 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 | E041 | Explicit horizon longer than 120 months | `horizon spans 144 months; maximum is 120` |
 | E042 | `sizes` empty | `sizes must define at least one size` |
 | E043 | `subdomains` empty | `subdomains must contain at least one subdomain` |
+| E050 | `locked: true` without `start` | `project "Partner launch" is locked but has no start; a locked project needs a start month` |
+| E051 | `promised_to` without `locked: true` | `project "Audit" has promised_to but is not locked; add locked: true or remove promised_to` |
 | E060 | Unschedulable (any mode, or an auto-start project) | `project "Audit" cannot be scheduled: every slot of team "ops" is held by an ongoing project` |
 | E061 | Conflict (error mode) | `project "Reporting" needs a slot on 2027-01-01 but team "alpha" has 2 of 2 busy` |
 | E101 | CSV syntax error (unterminated quote) | `unterminated quoted field starting at line 7` |
@@ -890,6 +926,7 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 | W012 | Auto horizon capped | `automatic horizon capped at 120 months (2027-01 to 2036-12)` |
 | W013 | Product has no projects | `product "Karty" has no projects` |
 | W014 | More products than palette colours; some share | `products "A" and "B" share colour "teal" (more than 32 products)` |
+| W015 | Locked project at risk (SC-15); replaces W011 for a locked project | `locked project "Mobile release" cannot keep its promised start 2027-03-01: depends on "Core API", which ends 2027-04-26` (or `all 2 slots of team "beta" are taken by locked projects; shown in overflow lane +1`, or both joined by `; `) |
 | W020 | CSV column not used and ignored, subdomain column with --base, or product column without --base | `column "Właściciel" is not used and was ignored` |
 | W021 | Day of a CSV start date dropped (only the month is kept) | `day of "2027-03-15" ignored; using 2027-03 [column "Start"]` |
 
@@ -912,7 +949,7 @@ Location rule: a diagnostic points to the offending node; project-level diagnost
 
 ## 11. Acceptance tests
 
-The tool is accepted when all 74 scenarios below pass. "DE" = dependencies-example.yaml; CSV fixtures are in section 13.2. "WE" = `scheduling-worked-example.yaml`, "EX" = `roadmap.example.yaml`, "PE" = `products-example.yaml`; all runs use `--today` or the file's `today` so results are reproducible.
+The tool is accepted when all 86 scenarios below pass. "DE" = dependencies-example.yaml; CSV fixtures are in section 13.2. "WE" = `scheduling-worked-example.yaml`, "EX" = `roadmap.example.yaml`, "PE" = `products-example.yaml`, "LE" = `lock-example.yaml`; all runs use `--today` or the file's `today` so results are reproducible.
 
 ### 11.1 Scheduling and colour
 
@@ -1028,6 +1065,23 @@ The tool is accepted when all 74 scenarios below pass. "DE" = dependencies-examp
 | AT-73 | `rt render EX --strict` and `rt validate EX` | Same diagnostics as before (no new warnings) |
 | AT-74 | `rt schema` | Accepts `team_norms`; still validates every fixture |
 
+### 11.9 Locked projects
+
+| ID | Given / When | Then |
+| --- | --- | --- |
+| AT-75 | `rt render LE --plan p.json` | Exit 0; `p.json` equals `lock-example.expected.json` byte for byte (ignoring `rt_version`) |
+| AT-76 | Same run | Partner launch keeps 2027-02-01 in Alpha lane 1 although written after Core API; Core API starts 2027-03-01, `delay_days` 59, reason `capacity` |
+| AT-77 | Same run | Mobile release: start 2027-03-01, `earliest_start` 2027-04-26, `lock_risk` `dependency`, flags `at_risk locked`, `delay_days` 0; W015 names Core API and 2027-04-26 |
+| AT-78 | Same run | Audit: Beta lane 3 (overflow) from 2027-03-01, `lock_risk` `capacity`, flags `at_risk locked over_capacity`; W015 and no W011 |
+| AT-79 | `rt render LE --on-conflict error` | Exit 3; E061 for Core API and Reporting only; no HTML |
+| AT-80 | `rt render LE --on-conflict overflow --plan p.json` | Core API in Alpha lane 2 from 2027-01-01 (W011); Reporting in Beta lane 4 from 2027-03-01; locked projects keep their dates; Mobile release on track, Audit at risk |
+| AT-81 | `locked: true` without `start`; `promised_to` without `locked`; `locked: 1`; `promised_to` of 101 characters; key `lock` | Exit 1; E050, E051, E011, E012, E002 "did you mean "locked"" |
+| AT-82 | LE HTML | Locked bars have `rt-bar--locked` and one `rt-bar__lock`; Mobile release and Audit also `rt-bar--risk`, Audit without `rt-bar--over`; `data-lock-risk` equals the plan; the legend shows both lock symbols; tooltips have the `Locked` and `Promise at risk` lines |
+| AT-83 | `rt render LE --summary` | KPI tiles Locked 4 and At risk 2; one `rt-commitments` table with 4 rows in file order, statuses `on_track` / `at_risk` as in the plan |
+| AT-84 | EX, WE, DE and PE | Plans equal their expected files (only the new keys differ from rt 1.2); the HTML has no lock symbol in the legend and no `rt-bar--locked` |
+| AT-85 | `rt convert` of a CSV with `locked` cells `1`, `0`, `tak`, `x` and a `promised_to` column | `locked: true` for 1/tak/x and nothing for 0, plus `promised_to`, in CV-18 key order; a locked row without start gives E050 at that CSV row |
+| AT-86 | `rt schema` | Accepts `locked` and `promised_to`; still validates every fixture, LE included |
+
 ## 12. Assumptions and open questions
 
 All seven questions from the first review and the two requirements added on 24 Oct 2026 (command chaining, CSV import) are built into this version; the team-to-subdomain assumption (A1) still awaits confirmation.
@@ -1046,6 +1100,7 @@ All seven questions from the first review and the two requirements added on 24 O
 | Command chaining (24 Oct)? | Yes: every command reads stdin and writes stdout; one artifact per stream; nothing on stdout after a failure; exit 141 on a closed pipe | 6.5, CLI-2, AT-37 to AT-46 |
 | CSV project list (24 Oct)? | Yes, through a conversion command rt convert (CSV → YAML) rather than CSV input to render; required columns name and size; optional base file for teams and settings | 3.4, 6.6, AT-47 to AT-55 |
 | Team indicators (CR-2, 31 Oct)? | Yes: DEV per slot and DEV per QA per team, developers only, every slot counts (ongoing included); marked when more than 50 % from the median (3+ teams) or outside roadmap-wide `team_norms`; higher is worse (red), lower is better (green); shown in labels, summary and plan; never warnings | 3.2, 7.13, OUT-12, OUT-30, OUT-34, PL-8, AT-66 to AT-74 |
+| Locked projects (CR-3, 7 Nov)? | Yes: `locked: true` (plus optional `promised_to`) marks a promised start; locked projects are placed first and never moved; a promise that cannot be kept stays at its date, is flagged at risk and gives W015; framed, padlocked bars and a Commitments table | 3.2, SC-14, SC-15, 4.6, OUT-35 to OUT-37, PL-9, AT-75 to AT-86 |
 | Products (CR-1, 29 Oct)? | Yes: optional `products`, each owned by one domain; a product is delivered through ordinary projects (one team per project, any subdomain); its bars share one colour from a 32-colour palette; a project pin wins over the product colour | 3.2, 5.2, 5.3, 7.2, 8, AT-56 to AT-65 |
 
 ### 12.2 Assumptions
@@ -1097,11 +1152,13 @@ Delivered alongside this document and stored in the project.
 | `dependencies-example.expected.json` | Expected plan for the dependency example | AT-26, AT-59 |
 | `products-example.yaml` | Input of the products example: two products, one spanning two subdomains, one project pinned over its product's colour | AT-56 to AT-58, AT-63 |
 | `products-example.expected.json` | Expected plan for the products example | AT-56 |
+| `lock-example.yaml` | Input of the locked-projects example (section 4.6): reserve first, a dependency risk and a capacity risk | AT-75 to AT-83 |
+| `lock-example.expected.json` | Expected plan for the locked-projects example | AT-75 |
 | `roadmap.schema.json` | JSON Schema (draft 2020-12) of the input format | Editor support, `rt schema`, schema-level validation, AT-65, AT-74 |
 | `convert/projects.minimal.csv` | Smallest CSV: columns name and size only | AT-47, AT-55 |
 | `convert/projects.minimal.expected.yaml` | Expected skeleton output for the minimal CSV | AT-47, AT-55 |
 | `convert/projects.pl.csv` | Polish Excel-style export: semicolons, BOM, CRLF, Polish headers, quoted delimiter, ignored column | AT-48 to AT-50 |
 | `convert/teams.base.yaml` | Base file with settings, sizes, two teams and comments | AT-48 to AT-50, AT-54 |
 | `convert/projects.pl.expected.yaml` | Expected output of the base-mode conversion | AT-48 to AT-50 |
-| `reference/reference_plan.py` | Oracle that produced the three expected plan files (test tooling only) | Golden and differential plan tests |
+| `reference/reference_plan.py` | Oracle that produced the four expected plan files (test tooling only) | Golden and differential plan tests |
 | `reference/reference_convert.py` | Oracle that produced both expected YAML files (test tooling only) | Differential tests for convert |

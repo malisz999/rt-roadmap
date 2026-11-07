@@ -3,7 +3,7 @@
 Generated models: 1–5 teams with 1–4 slots, 0–40 projects, sizes 1–26 weeks, starts within 24 months or omitted,
 ~10 % ongoing, dependencies only to earlier finite projects; optionally 0–4 or 30–36 products (some pinned) with
 projects that reference them; capacities (sometimes none, sometimes no testers) and optional team_norms for the
-team indicators.
+team indicators; optionally locked projects (CR-3: ~1 in 4 projects with a start, some with promised_to).
 """
 
 from __future__ import annotations
@@ -44,7 +44,9 @@ class Spec:
 
 
 @st.composite
-def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0, products: bool = False) -> Spec:
+def roadmaps(
+    draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0, products: bool = False, locks: bool = False
+) -> Spec:
     team_count = draw(st.integers(1, 5))
     split = draw(st.integers(1, team_count))  # teams [0, split) in subdomain one, the rest in two
     slots = [draw(st.integers(1, 4)) for _ in range(team_count)]
@@ -99,6 +101,10 @@ def roadmaps(draw: st.DrawFn, *, pins: bool = False, min_projects: int = 0, prod
         start = draw(st.none() | st.integers(0, 23))
         if start is not None:
             lines.append(f"    start: {2027 + start // 12}-{start % 12 + 1:02d}")
+            if locks and draw(st.integers(0, 3)) == 0:
+                lines.append("    locked: true")
+                if draw(st.booleans()):
+                    lines.append(f"    promised_to: Client {seq}")
         if finite and draw(st.booleans()):
             deps = draw(st.lists(st.sampled_from(finite), min_size=1, max_size=3, unique=True))
             lines.append(f"    depends_on: [{', '.join(f'p{d}' for d in deps)}]")
@@ -136,14 +142,20 @@ def check_schedule_invariants(text: str, mode: str) -> None:
         for d in p.depends_on:
             dep_end = by_seq[d].end
             assert dep_end is not None and p.earliest_start >= dep_end
-        assert p.start >= p.earliest_start
+        if p.locked:  # CR-3: kept at the promised start; a late dependency or an overflow lane is a lock risk
+            assert p.start == p.requested_start and p.delay_days == 0 and p.delay_reason is None
+            assert (p.earliest_start > p.start) == ("dependency" in (p.lock_risk or ""))
+            assert p.overflow == ("capacity" in (p.lock_risk or ""))
+            assert ("at_risk" in p.flags) == (p.lock_risk is not None) and "locked" in p.flags
+        else:
+            assert p.start >= p.earliest_start and p.lock_risk is None
         if p.requested_start is None:
             assert not p.overflow and p.delay_days == 0 and "auto_start" in p.flags
         else:
             assert p.delay_days == (p.start - p.requested_start).days
-        if mode == "delay":
+        if mode == "delay" and not p.locked:
             assert not p.overflow
-        if mode == "overflow" and p.requested_start is not None:
+        if mode == "overflow" and p.requested_start is not None and not p.locked:
             assert p.start == p.earliest_start
         if p.end is not None:
             weeks = p.weeks
@@ -157,7 +169,7 @@ def check_schedule_invariants(text: str, mode: str) -> None:
 
 
 @settings(max_examples=EXAMPLES, deadline=None, suppress_health_check=[HealthCheck.too_slow])
-@given(spec=roadmaps(), mode=st.sampled_from(["delay", "overflow", "error"]))
+@given(spec=roadmaps(locks=True), mode=st.sampled_from(["delay", "overflow", "error"]))
 def test_schedule_invariants(spec: Spec, mode: str) -> None:
     check_schedule_invariants(spec.yaml, mode)
 
@@ -215,7 +227,10 @@ def _normalise(data: dict[str, Any]) -> dict[str, Any]:
 
 
 @settings(max_examples=EXAMPLES, deadline=None, suppress_health_check=[HealthCheck.too_slow])
-@given(spec=roadmaps(min_projects=1, pins=True, products=True), mode=st.sampled_from(["delay", "delay", "overflow"]))
+@given(
+    spec=roadmaps(min_projects=1, pins=True, products=True, locks=True),
+    mode=st.sampled_from(["delay", "delay", "overflow"]),
+)
 def test_differential_against_reference_oracle(spec: Spec, mode: str) -> None:
     ref_module = oracle()
     with tempfile.TemporaryDirectory() as tmp:

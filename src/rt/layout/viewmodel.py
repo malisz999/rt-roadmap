@@ -55,6 +55,7 @@ __all__ = [
 ]
 
 PILL_MIN_WIDTH = Decimal(80)  # narrower bars keep their name and drop the delay pill (the lead line remains)
+LOCK_ROOM = 24  # px: padlock (11) plus gap, added to the text threshold of a locked bar
 TIP_WIDTH = Decimal(330)  # styled tooltip max width plus margin: anchor it right when it would leave the timeline
 TODAY_LABEL_HALF = Decimal(56)  # half the width of the "Today · 23 Oct" pill, for edge alignment
 
@@ -108,6 +109,8 @@ class BarVM:
     aria: str
     data: tuple[tuple[str, str], ...]  # RS 7.10, in contract order
     lead: LeadVM | None
+    locked: bool = False  # padlock and frame (RS OUT-35)
+    risk: str | None = None  # `! at risk` pill text, on bars wide enough for the size chip (RS OUT-36)
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,6 +231,7 @@ class LegendProductVM:
 class LegendVM:
     sizes: tuple[LegendSizeVM, ...]
     products: tuple[LegendProductVM, ...] = ()
+    locks: bool = False  # the file has locked projects: show the two lock symbols (CR-3)
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,11 +287,28 @@ class CompositionVM:
 
 
 @dataclass(frozen=True, slots=True)
+class CommitmentVM:
+    """One row of the "Commitments" table: a locked project and whether its promise holds (RS OUT-37)."""
+
+    seq: int
+    name: str
+    team: str
+    product: str
+    promised_to: str
+    start: str
+    last_day: str
+    status: str  # on_track | at_risk
+    status_text: str  # `On track`, `At risk`
+    reason: str  # why at risk, else ""
+
+
+@dataclass(frozen=True, slots=True)
 class SummaryVM:
     kpis: tuple[KpiVM, ...]
     months: tuple[MonthHeadVM, ...]
     rows: tuple[LoadRowVM, ...]
     composition: CompositionVM | None = None
+    commitments: tuple[CommitmentVM, ...] = ()  # locked projects, file order (RS OUT-37)
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,7 +394,9 @@ def build_page(plan: Plan, *, summary: bool, version: str) -> PageVM:
         as_of=f"As of {fmt_date(plan.today)}",
         mode_label=f"Conflicts: {Mode(plan.on_conflict).value}",
         legend=LegendVM(
-            tuple(LegendSizeVM(s.label, f"{s.weeks}w") for s in plan.model.model.sizes), _legend_products(plan)
+            tuple(LegendSizeVM(s.label, f"{s.weeks}w") for s in plan.model.model.sizes),
+            _legend_products(plan),
+            any(p.locked for p in plan.projects),
         ),
         summary=_summary(plan, scale) if summary else None,
         years=_spans(g.year_spans(scale), scale, lambda s: s.label),
@@ -792,11 +815,13 @@ def _bar(
 ) -> BarVM:
     flags = set(p.flags)
     ongoing = p.ongoing
+    at_risk = p.lock_risk is not None
     delayed = DELAYED in flags
     clip_l = CLIPPED_LEFT in flags
     clip_r = CLIPPED_RIGHT in flags
     width = box.width  # label rules use the unrounded width (ADS 6.7)
-    tiny = width < g.TEXT_MIN_WIDTH
+    # A locked bar also needs room for its padlock: below 72 px it shows the padlock only (RS OUT-35).
+    tiny = width < g.TEXT_MIN_WIDTH + (LOCK_ROOM if p.locked else 0)
     narrow = not tiny and width < g.CHIP_MIN_WIDTH
 
     if p.color is not None:
@@ -811,7 +836,9 @@ def _bar(
         (delayed, "delayed"),
         (clip_l, "clip-l"),
         (clip_r, "clip-r"),
-        (OVER_CAPACITY in flags, "over"),
+        (OVER_CAPACITY in flags and not at_risk, "over"),
+        (p.locked, "locked"),
+        (at_risk, "risk"),
         (dep_ext, "dep-ext"),
         (narrow, "narrow"),
         (tiny, "tiny"),
@@ -823,6 +850,9 @@ def _bar(
     chip = None
     if not tiny and not narrow and not ongoing and p.size is not None:
         chip = f"{p.size} · {p.weeks}w"
+    risk = None
+    if at_risk and not tiny and not narrow:  # the pill takes the size chip's place (RS OUT-36)
+        risk, chip = "! at risk", None
     delay = delay_label(p.delay_days) if delayed and width >= PILL_MIN_WIDTH else None
 
     lead = None
@@ -848,6 +878,7 @@ def _bar(
         ("data-end", p.end.isoformat() if p.end is not None else "ongoing"),
         ("data-delay-days", str(p.delay_days)),
         ("data-delay-reason", p.delay_reason or ""),
+        ("data-lock-risk", p.lock_risk or ""),
         ("data-depends-on", " ".join(str(d) for d in p.depends_on)),
         ("data-color-index", "" if p.color_index is None else str(p.color_index)),
         ("data-flags", " ".join(sorted(p.flags))),
@@ -872,6 +903,8 @@ def _bar(
         aria="; ".join(lines),
         data=data,
         lead=lead,
+        locked=p.locked,
+        risk=risk,
     )
 
 
@@ -890,6 +923,11 @@ def _facts(
         pr = next(x for x in plan.products if x.id == p.product)
         domain, owner = _owned_by(plan, pr)
         rows.append(TipRow("Product", f"{pr.name} · owned by {domain}" + (f" ({owner})" if owner else "")))
+    if p.locked:
+        fixed = f"start fixed {fmt_date(p.start)}"
+        rows.append(TipRow("Locked", f"promised to {p.promised_to} · {fixed}" if p.promised_to else fixed))
+        if p.lock_risk is not None:
+            rows.append(TipRow("Promise at risk", lock_risk_text(p, team, by_seq)))
     if p.ongoing or p.size is None:
         rows.append(TipRow("Size", "Ongoing"))
     else:
@@ -917,9 +955,23 @@ def _facts(
             dep_team = teams_by_id[dep.team]
             parts.append(f"{dep.name} ({subdomain_names[dep_team.subdomain_id]} › {dep_team.name})")
         rows.append(TipRow("After", ", ".join(parts)))
-    if p.overflow:
+    if p.overflow and p.lock_risk is None:
         rows.append(TipRow("Over capacity", f"overflow lane +{p.lane - team.slots}"))
     return rows
+
+
+def lock_risk_text(p: PlannedProject, team: Team, by_seq: Mapping[int, PlannedProject]) -> str:
+    """Why a locked project cannot keep its promise (RS OUT-36): the dependency that ends last, a full team, or
+    both."""
+    parts: list[str] = []
+    late = [(end, -d.seq, d) for d in map(by_seq.__getitem__, p.depends_on) if (end := d.end) and end > p.start]
+    if late:
+        dep = max(late)[2]
+        last = dep.last_day or dep.start
+        parts.append(f"depends on {dep.name} (last day {fmt_date(last)})")
+    if p.overflow:
+        parts.append(f"no free slot in team {team.name} (overflow lane +{p.lane - team.slots})")
+    return "; ".join(parts)
 
 
 # --------------------------------------------------------------------------------------------- summary
@@ -942,6 +994,9 @@ def _summary(plan: Plan, scale: g.Scale) -> SummaryVM:
     ]
     if Mode(plan.on_conflict) is Mode.OVERFLOW:
         kpis.append(KpiVM("Over capacity", str(sum(1 for p in projects if OVER_CAPACITY in p.flags)), None))
+    if any(p.locked for p in projects):  # CR-3 (RS OUT-30)
+        kpis.append(KpiVM("Locked", str(sum(1 for p in projects if p.locked)), "promised"))
+        kpis.append(KpiVM("At risk", str(sum(1 for p in projects if p.lock_risk is not None)), "promises"))
     kpis.append(KpiVM("Slots", str(sum(t.slots for t in model.teams)), None))
     kpis.append(KpiVM("People", str(sum(totals)), people_note))
     ind = indicators_of(plan)
@@ -983,7 +1038,35 @@ def _summary(plan: Plan, scale: g.Scale) -> SummaryVM:
             _cells("All teams", "all", "all", months, ml.total, ml.total_occupied, ml.total_capacity),
         )
     )
-    return SummaryVM(tuple(kpis), heads, tuple(rows), _composition(plan))
+    return SummaryVM(tuple(kpis), heads, tuple(rows), _composition(plan), _commitments(plan))
+
+
+def _commitments(plan: Plan) -> tuple[CommitmentVM, ...]:
+    """Every locked project with its promise and status, in file order (RS OUT-37)."""
+    teams = {t.id: t for t in plan.model.teams}
+    products = {pr.id: pr.name for pr in plan.products}
+    by_seq = {p.seq: p for p in plan.projects}
+    out: list[CommitmentVM] = []
+    for p in plan.projects:
+        if not p.locked:
+            continue
+        team = teams[p.team]
+        risky = p.lock_risk is not None
+        out.append(
+            CommitmentVM(
+                seq=p.seq,
+                name=p.name,
+                team=team.name,
+                product=products.get(p.product or "", "–"),
+                promised_to=p.promised_to or "–",
+                start=fmt_date(p.start),
+                last_day="none (ongoing)" if p.last_day is None else fmt_date(p.last_day),
+                status="at_risk" if risky else "on_track",
+                status_text="At risk" if risky else "On track",
+                reason=lock_risk_text(p, team, by_seq) if risky else "",
+            )
+        )
+    return tuple(out)
 
 
 def _cells(

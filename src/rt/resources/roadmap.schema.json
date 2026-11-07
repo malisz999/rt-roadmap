@@ -361,6 +361,16 @@
         "ongoing": {
           "type": "boolean"
         },
+        "locked": {
+          "type": "boolean",
+          "description": "true: the start month has been promised (business, customer, partner). The project is placed first and never moved; needs start."
+        },
+        "promised_to": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Optional: who the date was promised to. Only with locked: true."
+        },
         "depends_on": {
           "description": "Finish-to-start dependencies: project ids, or project names unique in the file. Must refer to projects earlier in the file.",
           "anyOf": [
@@ -418,7 +428,38 @@
             ]
           }
         }
-      ]
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "locked": {
+                "const": true
+              }
+            },
+            "required": [
+              "locked"
+            ]
+          },
+          "then": {
+            "required": [
+              "start"
+            ]
+          }
+        }
+      ],
+      "dependentSchemas": {
+        "promised_to": {
+          "properties": {
+            "locked": {
+              "const": true
+            }
+          },
+          "required": [
+            "locked"
+          ]
+        }
+      }
     }
   }
 }

@@ -39,6 +39,8 @@ CONVERT_COLUMNS: tuple[str, ...] = (
     "subdomain",
     "start",
     "ongoing",
+    "locked",
+    "promised_to",
     "depends_on",
     "id",
     "description",

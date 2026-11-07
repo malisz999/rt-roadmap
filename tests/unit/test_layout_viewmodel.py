@@ -82,6 +82,7 @@ def test_bars_of_the_worked_example(we: PageVM) -> None:
         "data-end": "2027-02-26",
         "data-delay-days": "28",
         "data-delay-reason": "capacity",
+        "data-lock-risk": "",
         "data-depends-on": "",
         "data-color-index": "1",
         "data-flags": "delayed",

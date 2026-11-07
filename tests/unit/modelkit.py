@@ -160,6 +160,8 @@ def from_doc(
                 color=_color(p.get("color")),
                 pos=_pos(p, source),
                 product_id=p.get("product"),
+                locked=bool(p.get("locked", False)),
+                promised_to=p.get("promised_to"),
             )
         )
     products = tuple(
@@ -254,6 +256,8 @@ def make_model(
                 color=_color(color),
                 pos=Pos(100 + seq, 5, "<t>"),
                 product_id=spec.get("product"),
+                locked=bool(spec.get("locked", False)),
+                promised_to=spec.get("promised_to"),
             )
         )
         deps[seq] = tuple(sorted(spec.get("deps", ())))

@@ -7,12 +7,14 @@ from datetime import date, timedelta
 from rt.diagnostics import Code, Collector
 from rt.model.types import ResolvedModel, Settings
 from rt.schedule.types import (
+    AT_RISK,
     AUTO_START,
     CLIPPED_LEFT,
     CLIPPED_RIGHT,
     CONTINUES,
     DELAYED,
     HIDDEN,
+    LOCKED,
     OVER_CAPACITY,
     Horizon,
     Schedule,
@@ -77,6 +79,10 @@ def visibility(m: ResolvedModel, s: Schedule, h: Horizon) -> dict[int, Visibilit
             flags.add(AUTO_START)
         if pl.overflow:
             flags.add(OVER_CAPACITY)
+        if pl.locked:
+            flags.add(LOCKED)
+        if pl.lock_risk is not None:
+            flags.add(AT_RISK)
         vis_start = max(pl.start, h.h0)
         vis_end = h.h1 if pl.end is None else min(pl.end, h.h1)
         if vis_start >= vis_end:

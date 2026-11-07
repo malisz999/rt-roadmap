@@ -15,6 +15,7 @@ roadmap/
     ├── README.md                 This file
     ├── requirements.md           Requirements specification (RS): what rt must do, AT-01…AT-74
     ├── architecture.md           Architecture and design spec (ADS): stack, modules, milestones M1–M8
+    ├── manual/                   User manual and one-page cheat sheet (Markdown + A4 PDF), with screenshots
     ├── images/                   Diagrams referenced by the two specs
     │   ├── page-layout.svg               RS 7.2: page layout, worked example drawn to scale
     │   └── architecture-pipeline.svg     ADS 3: pipeline stages, output branches, diagnostics
@@ -28,6 +29,8 @@ roadmap/
     │   ├── dependencies-example.expected.json      Expected plan for DE
     │   ├── products-example.yaml                   "PE" fixture: products and their colours (RS 5.2)
     │   ├── products-example.expected.json          Expected plan for PE
+    │   ├── lock-example.yaml                       "LE" fixture: locked projects (RS 4.6, CR-3)
+    │   ├── lock-example.expected.json              Expected plan for LE
     │   └── convert/              Fixtures for `rt convert` (CSV -> YAML)
     │       ├── projects.minimal.csv              Two-column CSV, no base file
     │       ├── projects.minimal.expected.yaml    Expected output of the above
@@ -47,6 +50,7 @@ Requires `ruamel.yaml` (0.19.x). Run from the repository root:
 python docs/reference/reference_plan.py docs/fixtures/scheduling-worked-example.yaml
 python docs/reference/reference_plan.py docs/fixtures/dependencies-example.yaml
 python docs/reference/reference_plan.py docs/fixtures/products-example.yaml
+python docs/reference/reference_plan.py docs/fixtures/lock-example.yaml
 python docs/reference/reference_convert.py docs/fixtures/convert/projects.minimal.csv
 python docs/reference/reference_convert.py docs/fixtures/convert/projects.pl.csv \
     --base docs/fixtures/convert/teams.base.yaml \

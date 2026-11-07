@@ -136,6 +136,8 @@ def flexible_projects(doc: Any, candidates: Any) -> list[Flexible]:
         if str(key) not in keys:
             sys.exit(f'allocate: candidates name unknown project "{key}"')
         i = keys[str(key)]
+        if projects[i].get("locked"):  # rt 1.3+: a locked project was promised; it never moves
+            sys.exit(f'allocate: project "{key}" is locked (promised); remove it from the candidates file')
         allowed_list = teams if allowed in ("*", ["*"]) else [str(a) for a in allowed]
         unknown = [t for t in allowed_list if t not in teams]
         if unknown:
@@ -198,7 +200,8 @@ class Evaluator:
         ends = [date.fromisoformat(p["end"]).toordinal() - self.ref for p in projects if p["end"]]
         flow = sum(ends)  # sum of finish days: lower = work done sooner
         makespan = max(ends, default=0)
-        overflow = sum(1 for p in projects if "over_capacity" in p["flags"])
+        # over capacity, or a broken promise (rt 1.3+ locked project at risk): both weigh like an overflow lane
+        overflow = sum(1 for p in projects if {"over_capacity", "at_risk"} & set(p["flags"]))
         off_domain = 0
         for p, team in zip(projects, assignment, strict=True):
             product = p.get("product")

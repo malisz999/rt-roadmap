@@ -82,3 +82,15 @@ Validation catalogue: `tests/cli/test_catalogue_invalid.py` runs every `tests/fi
 | AT-72 | KPI tiles DEV per slot 2.2, DEV per QA 2.6; one rt-composition tabl… | `acceptance/test_at_team_indicators.py` | `test_at_72_summary`, `test_at_72_no_summary_no_table` |
 | AT-73 | Same diagnostics as before (no new warnings) | `acceptance/test_at_team_indicators.py` | `test_at_73_no_new_warnings` |
 | AT-74 | The schema accepts team_norms and still validates every fixture | `acceptance/test_at_team_indicators.py` | `test_at_74_schema` |
+| AT-75 | The LE plan equals lock-example.expected.json byte for byte (ignori… | `acceptance/test_at_locked.py` | `test_at_75_lock_plan_is_golden` |
+| AT-76 | Partner launch keeps 2027-02-01 although written after Core API; Co… | `acceptance/test_at_locked.py` | `test_at_76_locked_projects_are_placed_first` |
+| AT-77 | Mobile release at risk (dependency), earliest 2027-04-26; W015 name… | `acceptance/test_at_locked.py` | `test_at_77_dependency_risk` |
+| AT-78 | Audit in overflow lane 3, capacity risk; W015 and no W011 | `acceptance/test_at_locked.py` | `test_at_78_capacity_risk` |
+| AT-79 | Exit 3; E061 for Core API and Reporting only; no HTML | `acceptance/test_at_locked.py` | `test_at_79_error_mode_reports_unlocked_conflicts_only` |
+| AT-80 | Overflow mode: Core API lane 2, Reporting lane 4; locked dates kept | `acceptance/test_at_locked.py` | `test_at_80_overflow_mode` |
+| AT-81 | Exit 1; E050, E051, E011, E012, E002 did you mean "locked" | `acceptance/test_at_locked.py` | `test_at_81_lock_input_errors` |
+| AT-82 | rt-bar--locked, padlock, rt-bar--risk, data-lock-risk, legend, tool… | `acceptance/test_at_locked.py` | `test_at_82_locked_bars_legend_and_tooltips` |
+| AT-83 | KPI tiles Locked 4 and At risk 2; one rt-commitments table, 4 rows | `acceptance/test_at_locked.py` | `test_at_83_summary_commitments` |
+| AT-84 | EX, WE, DE, PE: no lock symbols; locked false, promised_to and lock… | `acceptance/test_at_locked.py` | `test_at_84_files_without_locks_are_unchanged` |
+| AT-85 | locked cells 1/0/tak/x, promised_to, CV-18 order; E050 at the CSV row | `acceptance/test_at_locked.py` | `test_at_85_convert_locked_columns` |
+| AT-86 | The schema accepts locked and promised_to; still validates every fi… | `acceptance/test_at_locked.py` | `test_at_86_schema_accepts_locks` |

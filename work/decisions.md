@@ -13,6 +13,15 @@ Tester questions with more detail: `work/questions.md` (Q-1 … Q-7).
 | RS 12.3 | Dependency lag or start-to-start links? | No: finish-to-start only, as in version 1. |
 | ADS 13.2 | PyPI name | Keep `rt-roadmap` (PyPI publishing stays commented out in `release.yml` until first release). |
 
+## CR-3 Locked projects (implemented 7 Nov 2026)
+
+`work/cr-lock.md` is built in full (rt 1.3.0): `locked: true` and optional `promised_to` on projects; locked
+projects are placed first at their promised start and never moved; a promise that cannot be kept stays at its date,
+is flagged `at_risk` and gives W015 (instead of W011); E050, E051; framed, padlocked bars, legend symbols, tooltip
+lines, KPI tiles and a Commitments table; plan fields `locked`, `promised_to`, `lock_risk`; `rt convert` columns;
+schema; both oracles; `lock-example.yaml` + expected plan; AT-75 … AT-86. Owner decisions Q1–Q4 and D1–D8 are in the
+CR; implementation notes N1–N9 in its section 11. The expected WE/DE/PE plans changed only by the three new keys.
+
 ## CR-2 Team indicators (implemented 31 Oct 2026)
 
 `work/cr-team-indicators.md` is built in full (rt 1.2.0): DEV per slot and DEV per QA per team, marked when more

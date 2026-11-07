@@ -5,7 +5,7 @@ swimlane, each project as a bar on a month-scaled timeline, grouped by domain, w
 dependencies, products and delays. This manual starts with a three-line project and adds one idea at a time, so
 each chapter builds on the previous one. The last chapters are reference material.
 
-Covers **rt 1.2**. For a one-page summary, see the [cheat sheet](cheat-sheet.md).
+Covers **rt 1.3**. For a one-page summary, see the [cheat sheet](cheat-sheet.md).
 
 ![A rendered roadmap: two domains, four teams, two products](images/roadmap-page.png)
 
@@ -29,23 +29,24 @@ Covers **rt 1.2**. For a one-page summary, see the [cheat sheet](cheat-sheet.md)
 9. [Colours](#9-colours)
 10. [Team capacity and team indicators](#10-team-capacity-and-team-indicators)
 11. [When there is more work than slots](#11-when-there-is-more-work-than-slots)
-12. [Putting it all together](#12-putting-it-all-together)
+12. [Locking promised projects](#12-locking-promised-projects)
+13. [Putting it all together](#13-putting-it-all-together)
 
 **Part III — Working with rt**
 
-13. [Reading the roadmap page](#13-reading-the-roadmap-page)
-14. [Checking a file and fixing errors](#14-checking-a-file-and-fixing-errors)
-15. [Importing projects from a spreadsheet](#15-importing-projects-from-a-spreadsheet)
-16. [Pipelines, automation and the plan JSON](#16-pipelines-automation-and-the-plan-json)
-17. [Editor support](#17-editor-support)
-18. [Tips, YAML pitfalls and FAQ](#18-tips-yaml-pitfalls-and-faq)
+14. [Reading the roadmap page](#14-reading-the-roadmap-page)
+15. [Checking a file and fixing errors](#15-checking-a-file-and-fixing-errors)
+16. [Importing projects from a spreadsheet](#16-importing-projects-from-a-spreadsheet)
+17. [Pipelines, automation and the plan JSON](#17-pipelines-automation-and-the-plan-json)
+18. [Editor support](#18-editor-support)
+19. [Tips, YAML pitfalls and FAQ](#19-tips-yaml-pitfalls-and-faq)
 
 **Part IV — Reference**
 
-19. [Input fields](#19-input-fields)
-20. [Commands and options](#20-commands-and-options)
-21. [Diagnostics](#21-diagnostics)
-22. [Colour palette](#22-colour-palette)
+20. [Input fields](#20-input-fields)
+21. [Commands and options](#21-commands-and-options)
+22. [Diagnostics](#22-diagnostics)
+23. [Colour palette](#23-colour-palette)
 
 ---
 
@@ -214,7 +215,9 @@ free at the **earliest possible date**. Three consequences matter in practice:
    Position on the timeline is not the same as position in the file.
 
 A project never takes more than one slot, and a team never runs more projects at once than it has slots
-(unless you ask for that — see [chapter 11](#11-when-there-is-more-work-than-slots)).
+(unless you ask for that — see [chapter 11](#11-when-there-is-more-work-than-slots)). The one exception to "file
+order is priority" is a **locked** project, whose date has been promised: rt places it before everything else
+([chapter 12](#12-locking-promised-projects)).
 
 ## 4. When a project starts: fixed, automatic, ongoing
 
@@ -223,7 +226,9 @@ A project starts in one of three ways.
 ### Fixed start — `start: YYYY-MM`
 
 The project is requested for the first day of that month. If no slot is free then, rt starts it later and
-reports a **delay** (W001). Use this for work with a real date: a regulatory deadline, a committed launch.
+reports a **delay** (W001). Use this for work with a real date: a regulatory deadline, a committed launch. When
+the date has been **promised** to someone and must not move, lock it as well
+([chapter 12](#12-locking-promised-projects)).
 
 ### Automatic start — no `start`
 
@@ -525,7 +530,7 @@ How colours are chosen:
 3. Standalone bars get the first ten palette colours (entries 0–9), avoiding their neighbours.
 
 Red is deliberately not in the palette: it is reserved for over-capacity outlines, the Today line and warning
-chips. The full palette is in [chapter 22](#22-colour-palette).
+chips. The full palette is in [chapter 23](#23-colour-palette).
 
 Pins can clash. If two pinned (or product) bars sit next to each other with the same colour, rt warns W009;
 remove a pin. To make "next to each other" stricter or looser, set the gap in days:
@@ -585,7 +590,7 @@ With this, a team with 6 developers and 1 tester (6.0 DEV/QA) is marked red `▲
 not marked. Indicators never produce warnings and never affect `--strict`.
 
 `rt render --summary` adds a **Team composition** table with every team's values, the totals, the median and
-the norm (see [chapter 13](#13-reading-the-roadmap-page)).
+the norm (see [chapter 14](#14-reading-the-roadmap-page)).
 
 ## 11. When there is more work than slots
 
@@ -608,7 +613,7 @@ rt render roadmap.yaml --on-conflict overflow
 | `error` | rt stops with E061 for every conflict, writes nothing, exit code 3 | Enforce in CI that the plan fits the teams |
 
 Automatic projects (no `start`) always wait for a free slot, in every mode. Dependencies are honoured in every
-mode.
+mode. Locked projects never cause E061 and are never delayed: they keep their date in every mode (next chapter).
 
 Example with one slot and two January projects, in `overflow` mode:
 
@@ -622,7 +627,111 @@ and in `error` mode:
 error E061: project "Pay-by-link redesign" needs a slot on 2027-01-01 but team "blik" has 1 of 1 busy
 ```
 
-## 12. Putting it all together
+## 12. Locking promised projects
+
+Some dates are not a plan but a **promise**: a launch agreed with a partner, a date given to a customer or to the
+business. Mark such a project `locked: true`. rt then treats its start month as fixed: the bar never moves, and
+everything else is scheduled around it. Optionally record who the date was promised to:
+
+```yaml
+version: 1
+roadmap:
+  title: Payments Roadmap 2027
+  horizon: { start: 2027-01, end: 2027-06 }
+  today: 2027-01-11
+sizes: { S: 2, M: 4, L: 8 }
+subdomains:
+  - id: channels
+    name: Payment Channels
+    teams:
+      - id: blik
+        name: BLIK Squad
+        parallel_projects: 1
+  - id: merchant
+    name: Merchant Experience
+    teams:
+      - id: app
+        name: Mobile App
+        parallel_projects: 1
+projects:
+  - name: Pay-by-link redesign
+    team: blik
+    size: L
+    start: 2027-01
+  - name: BLIK for Partner X
+    team: blik
+    size: M
+    start: 2027-02
+    locked: true                 # promised: never moved
+    promised_to: Partner X       # optional
+  - name: Partner X mobile release
+    team: app
+    size: S
+    start: 2027-03
+    locked: true
+    promised_to: Partner X
+    depends_on: [Pay-by-link redesign]
+```
+
+![Locked bars: a dark frame and a padlock; a promise at risk turns red](images/locked-projects.png)
+
+### What a lock does
+
+1. **Locked projects go first.** Before anything else, rt places every locked project exactly on the first day of
+   its `start` month. *BLIK for Partner X* keeps 1 February even though it is written **below** the redesign.
+2. **Everything else goes around them.** Unlocked projects are then scheduled as usual (file order, first free
+   slot). Here the redesign no longer fits in January–February and moves to 1 March:
+
+   ```
+   warning W001: project "Pay-by-link redesign" delayed 59 days (requested 2027-01-01, starts 2027-03-01):
+   no free slot in team "blik"
+   ```
+
+3. **A locked project is never delayed.** If its promise cannot be kept, the bar still stays at its date. It is
+   marked **at risk** and rt warns:
+
+   ```
+   warning W015: locked project "Partner X mobile release" cannot keep its promised start 2027-03-01:
+   depends on "Pay-by-link redesign", which ends 2027-04-26
+   ```
+
+A promise is at risk in two situations:
+
+| Situation | Example | What you see |
+| --- | --- | --- |
+| A project it depends on ends after its start | The redesign ends in April, the release was promised for March | Red frame and padlock; W015 names the late dependency |
+| Other locked projects already take every slot of the team | Three promises for the same month in a two-slot team | The last one sits in a red-hatched `+1` lane; W015 says the team is full |
+
+To resolve a risk, move the dependency earlier (put it higher in the file, or lock it too), give the team another
+slot, or go back to whoever the date was promised to. rt will not move the promise for you.
+
+### On the page
+
+- **Locked:** a dark solid frame around the bar and a padlock before its name.
+- **Promise at risk:** the frame and padlock turn red; wide bars also show a red `! at risk` label.
+- Very short locked bars show only the padlock; hover for the details.
+- The tooltip adds `Locked: promised to Partner X · start fixed 1 Feb 2027`, and for a bar at risk the reason,
+  for example `Promise at risk: depends on Pay-by-link redesign (last day 25 Apr 2027)`.
+- The legend explains both symbols (only when the file has locked projects).
+
+`rt render --summary` adds two counters, **Locked** and **At risk**, and a **Commitments** table: every promise
+with its team, product, who it was promised to, its dates and its status. It is the list to show to stakeholders.
+
+![The Commitments table of the summary](images/commitments.png)
+
+### Rules
+
+| Rule | Error if broken |
+| --- | --- |
+| A locked project needs a `start` month (a promise needs a date) | E050 |
+| `promised_to` is allowed only together with `locked: true` | E051 |
+| `locked` is `true` or `false` (not `1`, `yes`) | E011 |
+| `promised_to` is 1–100 characters | E012 |
+
+Ongoing work can be locked too (for example support promised from a given month). Locking never changes a bar's
+colour. Lock only real promises: every lock takes a slot away from the rest of the plan.
+
+## 13. Putting it all together
 
 The complete example below uses everything from Part II. It produces the page shown at the top of this manual.
 
@@ -703,6 +812,8 @@ projects:
     team: blik
     size: XL
     start: 2027-03
+    locked: true                       # date promised to the business
+    promised_to: Retail banking
 
   # --- Cards ---
   - id: tokens
@@ -753,9 +864,9 @@ projects:
 ```
 
 ```
-roadmap.yaml:94:5: warning W001: project "BLIK in the mobile app" delayed 25 days (requested 2027-02-01,
+roadmap.yaml:96:5: warning W001: project "BLIK in the mobile app" delayed 25 days (requested 2027-02-01,
 starts 2027-02-26): waiting for dependencies
-roadmap.yaml:119:5: warning W001: project "BLIK in the portal" delayed 28 days (requested 2027-02-01,
+roadmap.yaml:121:5: warning W001: project "BLIK in the portal" delayed 28 days (requested 2027-02-01,
 starts 2027-03-01): no free slot in team "portal"
 rt: wrote roadmap.html — 2 subdomains, 4 teams, 12 projects, 2 warnings
 ```
@@ -770,12 +881,14 @@ What to notice in the result:
   second slot and *BLIK in the portal* is pushed to March.
 - All BLIK bars are blue, across three teams in two domains.
 - Cards has 6 developers per tester, above the norm of 4, so its DEV/QA chip is red `▲ 6.0`.
+- *Instant transfers* is locked: promised to retail banking for March, it has a dark frame and a padlock, and
+  `--summary` lists it under Commitments as on track.
 
 ---
 
 # Part III — Working with rt
 
-## 13. Reading the roadmap page
+## 14. Reading the roadmap page
 
 From top to bottom, the page contains:
 
@@ -806,6 +919,8 @@ empty slots are drawn too, so free capacity is visible.
 | `↤` at the left edge | Depends on a project not linked by an arrow (another domain or not drawn) |
 | `‹` or `›` with a square edge | Cut at the edge of the horizon |
 | Dashed red outline, red-hatched `+1` lane | Over capacity (overflow mode) |
+| Dark solid frame and a padlock | Locked: the start was promised |
+| Red solid frame and a red padlock, `! at risk` | A promise that cannot be kept (see the tooltip) |
 | Dotted vertical line | Quarter start; a solid darker line marks a new year |
 | Red vertical line | Today |
 
@@ -820,20 +935,25 @@ rt render roadmap.yaml --summary
 
 ![Summary section with KPIs, monthly load and team composition](images/roadmap-summary.png)
 
-- **KPI tiles** — number of subdomains, teams, finite and ongoing projects, delayed projects, slots, people
+- **KPI tiles** — number of subdomains, teams, finite and ongoing projects, delayed projects, locked projects and
+  promises at risk (when there are locks), slots, people
   (with the role breakdown), and DEV per slot / DEV per QA for all teams together.
 - **Monthly load** — for every team, every subdomain and all teams together, the share of slot-days in use per
   month. Columns line up with the timeline. Shading: `–` for 0 %, light blue below 50 %, mid blue 50–79 %, dark
-  blue 80–100 %, red above 100 % (only possible in overflow mode). Hover a cell for the slot-day count.
+  blue 80–100 %, red above 100 % (only in overflow mode, or when a locked promise is at risk in a full team).
+  Hover a cell for the slot-day count.
 - **Team composition** — DEV, QA, slots and both indicators per team, plus All teams, Median and the norm or
   normal range; a Notes column spells out each mark ("DEV per QA high (worse)", "no QA").
+- **Commitments** — only when the file has locked projects: every promise with its team, product, who it was
+  promised to, start, last day and status (*On track* or *At risk* with the reason). Two KPI tiles, Locked and
+  At risk, count them.
 
 ### Printing and dark mode
 
 Print from the browser: the page is set up for **A3 landscape**, keeps colours and never splits a team across
 pages. When your system uses dark mode, the page follows it automatically.
 
-## 14. Checking a file and fixing errors
+## 15. Checking a file and fixing errors
 
 `rt validate` checks and schedules a file without writing anything:
 
@@ -869,13 +989,15 @@ The most common mistakes and their fixes:
 | E032 | Both `size` and `ongoing: true`, or neither | Keep exactly one |
 | E034 / E035 | Dependency name misspelt, or the name is used by two projects | Give the project an `id` and use it |
 | E037 | Dependency written below the project that needs it | Move it above |
+| E050 / E051 | A locked project without `start`; `promised_to` without `locked: true` | Add the start month; add the lock |
 | E060 | Every slot of the team is taken by ongoing work | Add a slot or end the ongoing project |
-| E001 invalid YAML | Indentation, a tab, or a `: ` inside an unquoted name | See [chapter 18](#18-tips-yaml-pitfalls-and-faq) |
+| E001 invalid YAML | Indentation, a tab, or a `: ` inside an unquoted name | See [chapter 19](#19-tips-yaml-pitfalls-and-faq) |
 | W001 delayed | Not enough slots, or waiting for a dependency — the message says which | Reorder, add a slot, move the project to another team, or change the start |
+| W015 promise at risk | A locked project's dependency ends too late, or locked work fills the team | Move the dependency earlier, add a slot, or renegotiate the promise |
 
-The complete list is in [chapter 21](#21-diagnostics).
+The complete list is in [chapter 22](#22-diagnostics).
 
-## 15. Importing projects from a spreadsheet
+## 16. Importing projects from a spreadsheet
 
 Project lists often live in a spreadsheet. `rt convert` turns a CSV export into an rt YAML file.
 
@@ -981,6 +1103,8 @@ Notice that rt resolved the team name `BLIK Squad` and the product name `BLIK` t
 | `subdomain` | no | Subdomain name (only without `--base`, for the skeleton) |
 | `start` | no | `2027-03`, `2027-03-01` or `01.03.2027` — only the month is kept (W021 if the day is not 1) |
 | `ongoing` | no | `true/yes/y/1/x/tak/t` or `false/no/n/0/nie`/empty |
+| `locked` | no | The same values as `ongoing`, so `1`/`0` work |
+| `promised_to` | no | Who the date was promised to (only for locked rows) |
 | `depends_on` | no | Ids or names separated by `\|` |
 | `id`, `description`, `color` | no | As in YAML |
 
@@ -994,7 +1118,7 @@ Columns rt does not know (like *Owner*) are ignored with W020, so you can export
 - Rows with no team use `--team <id>`, or the base file's only team.
 - Re-running convert on the same input produces byte-identical YAML, so it diffs cleanly in version control.
 
-## 16. Pipelines, automation and the plan JSON
+## 17. Pipelines, automation and the plan JSON
 
 Every rt command reads standard input when no file is given and writes its content to standard output when
 asked, while all messages go to standard error. Commands therefore chain:
@@ -1023,6 +1147,9 @@ to standard output:
 # list delayed projects
 rt render roadmap.yaml -o roadmap.html --plan - | jq -r '.projects[] | select(.delay_days > 0) | .name'
 
+# list promises at risk and why
+rt validate roadmap.yaml --plan - | jq -r '.projects[] | select(.lock_risk) | "\(.name): \(.lock_risk)"'
+
 # list teams with an indicator mark
 rt validate roadmap.yaml --plan - | jq -r '.teams[] | select(.indicator_flags != []) | "\(.id): \(.indicator_flags)"'
 ```
@@ -1033,7 +1160,8 @@ rt validate roadmap.yaml --plan - | jq -r '.teams[] | select(.indicator_flags !=
 rt validate roadmap.yaml --strict --on-conflict error --today 2027-01-15
 ```
 
-fails the build on any error, any warning, or any project that does not fit the teams. Exit codes:
+fails the build on any error, any warning (a promise at risk included), or any unlocked project that does not fit
+the teams. Exit codes:
 
 | Code | Meaning |
 | --- | --- |
@@ -1046,7 +1174,7 @@ fails the build on any error, any warning, or any project that does not fit the 
 **Reproducible output.** The same file, options and `today` always give a byte-identical page and plan. Set
 `today` in the file (or pass `--today`) when you commit generated pages.
 
-## 17. Editor support
+## 18. Editor support
 
 rt ships a JSON Schema of the input format. Save it next to your file and reference it in the first line:
 
@@ -1063,7 +1191,7 @@ Editors with YAML language support (for example VS Code with the Red Hat YAML ex
 hover help and live validation of field names and value formats while you type. rt's own validation still
 checks the rules a schema cannot, such as references between teams and projects.
 
-## 18. Tips, YAML pitfalls and FAQ
+## 19. Tips, YAML pitfalls and FAQ
 
 ### YAML pitfalls
 
@@ -1082,6 +1210,7 @@ called `NO` is fine); months and dates with or without quotes.
 
 - **Put what matters most first.** File order is priority for free slots.
 - **Use `start` for real commitments, leave it out for the backlog.** Delays then mean something.
+- **Lock only what was promised.** `locked: true` makes everything else yield to that project.
 - **Give projects referenced in `depends_on` an `id`.**
 - **Model shared work as one project per team**, tied together with the same `product` and, if one must
   finish first, a `depends_on`.
@@ -1102,6 +1231,9 @@ depends on another, or has no start, may begin on any day when the slot or depen
 **Are holidays or working days considered?** No. A week is 7 calendar days. Choose size values that already
 include your typical slack.
 
+**How do I make sure a promised date never moves?** Add `locked: true` (and `promised_to`). rt keeps it at its
+start month and tells you with W015 when the rest of the plan puts the promise at risk.
+
 **Can one project be done by two teams?** No — split it into one project per team.
 
 **Can I write the file in JSON?** Yes, JSON is valid YAML. YAML is easier to write by hand and allows comments.
@@ -1121,7 +1253,7 @@ or the palette ran out for that cluster (W007). Otherwise neighbours always diff
 
 # Part IV — Reference
 
-## 19. Input fields
+## 20. Input fields
 
 **Top level**
 
@@ -1201,13 +1333,15 @@ order.
 | `start` | no | `YYYY-MM`; omitted = automatic start |
 | `size` | one of | A key of `sizes` |
 | `ongoing` | one of | `true` |
+| `locked` | no | `true` or `false`; `true` needs `start`: placed first, never moved |
+| `promised_to` | no | 1–100 characters; only with `locked: true` |
 | `depends_on` | no | Id or unique name, or a list of them; projects above, not ongoing |
 | `description` | no | ≤ 500 characters; shown in the tooltip |
 | `color` | no | Palette name or `"#RRGGBB"`; wins over the product colour |
 
 Unknown fields are errors (E002), so typos never pass silently.
 
-## 20. Commands and options
+## 21. Commands and options
 
 | Command | Purpose |
 | --- | --- |
@@ -1242,7 +1376,7 @@ A missing file argument or `-` means standard input.
 
 Command-line options win over values in the file, which win over defaults.
 
-## 21. Diagnostics
+## 22. Diagnostics
 
 Format: `file:line:column: error|warning CODE: message`.
 
@@ -1271,6 +1405,8 @@ Format: `file:line:column: error|warning CODE: message`.
 | E038 / E039 | Unknown product / product domain is not a subdomain id |
 | E040 / E041 | Horizon end before start / horizon longer than 120 months |
 | E042 / E043 | `sizes` empty / `subdomains` empty |
+| E050 | Locked project without `start` |
+| E051 | `promised_to` without `locked: true` |
 | E060 | Cannot schedule: every slot held by ongoing projects (exit 3) |
 | E061 | Conflict in `error` mode (exit 3) |
 | E101–E107 | CSV problems: unterminated quote, encoding, missing column, duplicate column, no team for a row, too many cells, team in two subdomains |
@@ -1291,10 +1427,11 @@ Format: `file:line:column: error|warning CODE: message`.
 | W012 | Automatic horizon capped at 120 months |
 | W013 | Product has no projects |
 | W014 | More than 32 products; some share a colour |
+| W015 | Locked project cannot keep its promised start (late dependency or full team) |
 | W020 | CSV column ignored |
 | W021 | Day of a CSV start date dropped |
 
-## 22. Colour palette
+## 23. Colour palette
 
 Use any of these names in `color:` of a project or product. Entries 0–9 are used for standalone bars, 10–31
 first for products.

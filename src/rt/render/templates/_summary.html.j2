@@ -46,4 +46,21 @@
 </table>
 </div>
 {% endif %}
+{% if page.summary.commitments %}
+<div class="rt-summary__comp">
+<table class="rt-commitments">
+<caption>Commitments</caption>
+<thead>
+<tr><th scope="col">Project</th><th scope="col">Team</th><th scope="col">Product</th><th scope="col">Promised to</th><th scope="col">Start</th><th scope="col">Last day</th><th scope="col">Status</th></tr>
+</thead>
+<tbody>
+{% for c in page.summary.commitments %}
+<tr class="rt-commitment rt-commitment--{{ c.status }}" data-seq="{{ c.seq }}" data-status="{{ c.status }}">
+<th scope="row"{{ L }}>{{ c.name }}</th><td{{ L }}>{{ c.team }}</td><td{{ L }}>{{ c.product }}</td><td{{ L }}>{{ c.promised_to }}</td><td>{{ c.start }}</td><td>{{ c.last_day }}</td><td class="rt-commitment__status"><strong>{{ c.status_text }}</strong>{% if c.reason %}<span{{ L }}>: {{ c.reason }}</span>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endif %}
 </section>

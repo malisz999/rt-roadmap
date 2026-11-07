@@ -91,6 +91,8 @@ class PlannedProject:
     size: str | None
     weeks: int | None
     ongoing: bool
+    locked: bool  # CR-3 (RS PL-9)
+    promised_to: str | None
     requested_start: date | None
     depends_on: tuple[int, ...]
     earliest_start: date
@@ -101,6 +103,7 @@ class PlannedProject:
     overflow: bool
     delay_days: int
     delay_reason: str | None
+    lock_risk: str | None  # dependency | capacity | dependency+capacity (RS SC-15)
     visible: VisibleOut | None
     color_index: int | None
     color_name: str | None

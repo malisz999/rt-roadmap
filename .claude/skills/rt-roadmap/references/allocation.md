@@ -12,6 +12,7 @@ Ask for, or infer and state, these. Never invent hard constraints silently.
 | --- | --- | --- |
 | Hard: who can do it | "Only Cards can touch the card vault"; skills; system ownership | Candidate list per project (`candidates.yaml`) |
 | Hard: fixed dates | Regulatory deadline, contract start | `start:` (requested month); check its delay is 0 |
+| Hard: promises (rt 1.3+) | Date promised to a customer or partner | `locked: true` (+ `promised_to`): rt places it first and never moves it; never put a locked project in `candidates.yaml`; the optimiser treats a promise at risk like an overflow lane |
 | Hard: order | "Routing needs both acquirers first" | `depends_on` (predecessor written above) |
 | Capacity | 2 squads in team X | `parallel_projects`; split big teams only if they really run parallel streams |
 | Preference: ownership | Product owned by domain D | Prefer teams in D (optimiser `--w-affinity`) |

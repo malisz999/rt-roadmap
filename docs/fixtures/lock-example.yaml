@@ -1,0 +1,64 @@
+# Lock example (CR-3; requirements spec sections 3.2, 4.6, AT-75 to AT-86).
+# Locked projects keep their promised start: they are placed before all other projects. Partner launch keeps
+# February although Core API is written above it; Mobile release and Audit cannot keep their promise (a late
+# dependency, a full team) and are marked at risk.
+version: 1
+
+roadmap:
+  title: Lock example
+  horizon: { start: 2027-01, end: 2027-06 }
+  today: 2027-01-15
+
+sizes:
+  S: 2
+  M: 4
+  L: 8
+
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - id: alpha
+        name: Alpha
+        parallel_projects: 1
+      - id: beta
+        name: Beta
+        parallel_projects: 2
+
+projects:
+  - name: Core API
+    team: alpha
+    size: L
+    start: 2027-01
+  - name: Partner launch
+    team: alpha
+    size: M
+    start: 2027-02
+    locked: true
+    promised_to: Partner X
+  - name: Mobile release
+    team: beta
+    size: M
+    start: 2027-03
+    locked: true
+    promised_to: Retail bank
+    depends_on: [Core API]
+  - name: Data migration
+    team: beta
+    size: S
+    start: 2027-03
+    locked: true
+  - name: Audit
+    team: beta
+    size: S
+    start: 2027-03
+    locked: true
+    promised_to: Regulator
+  - name: Reporting
+    team: beta
+    size: M
+    start: 2027-03
+  - name: Polish
+    team: beta
+    size: S
+    depends_on: [Partner launch]

@@ -77,6 +77,8 @@ PROJECT_KEYS: tuple[str, ...] = (
     "start",
     "size",
     "ongoing",
+    "locked",
+    "promised_to",
     "depends_on",
     "description",
     "color",
@@ -90,6 +92,7 @@ SUBDOMAIN_DESCRIPTION_LEN = (0, 300)
 TEAM_NAME_LEN = (1, 60)
 PROJECT_NAME_LEN = (1, 100)
 PROJECT_DESCRIPTION_LEN = (0, 500)
+PROMISED_TO_LEN = (1, 100)  # CR-3 locked projects
 PRODUCT_NAME_LEN = (1, 100)
 PRODUCT_OWNER_LEN = (0, 100)
 PRODUCT_DESCRIPTION_LEN = (0, 500)

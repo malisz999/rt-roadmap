@@ -9,12 +9,14 @@ from datetime import date
 from rt.timeutil import Month
 
 # Flag names (RS PL-4); always emitted sorted.
+AT_RISK = "at_risk"  # CR-3: a locked project that cannot keep its promised start (RS SC-15)
 AUTO_START = "auto_start"
 CLIPPED_LEFT = "clipped_left"
 CLIPPED_RIGHT = "clipped_right"
 CONTINUES = "continues"
 DELAYED = "delayed"
 HIDDEN = "hidden"
+LOCKED = "locked"  # CR-3
 OVER_CAPACITY = "over_capacity"
 
 # delay_reason values (RS PL-4)
@@ -47,8 +49,10 @@ class Placement:
     earliest: date
     start: date
     end: date | None  # exclusive; None = ongoing
-    delay_days: int  # 0 for auto-start projects
+    delay_days: int  # 0 for auto-start and locked projects
     delay_reason: str | None
+    locked: bool = False  # CR-3: placed in pass 1 at its requested start (RS SC-14)
+    lock_risk: str | None = None  # dependency | capacity | dependency+capacity (RS SC-15)
 
 
 @dataclass(frozen=True, slots=True)

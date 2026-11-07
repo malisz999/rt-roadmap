@@ -5,7 +5,7 @@
 :root {
   --bg: #F1F5F9; --surface: #FFFFFF; --text: #0F172A; --muted: #64748B; --grid: #E2E8F0; --year: #94A3B8;
   --today: #E11D48; --today-ink: #FFFFFF; --over: #DC2626; --tint: #F8FAFC; --dep: #64748B; --meter: #6366F1;
-  --chip: #F1F5F9; --tip-bg: #0F172A; --tip-fg: #F1F5F9; --focus: #2563EB; --ink: #1E293B;
+  --chip: #F1F5F9; --tip-bg: #0F172A; --tip-fg: #F1F5F9; --focus: #2563EB; --ink: #1E293B; --lock: #0F172A;
   --bad-bg: #FEE2E2; --bad: #B91C1C; --good-bg: #DCFCE7; --good: #166534;
   --ring: rgba(15,23,42,.09); --shadow: 0 1px 2px rgba(15,23,42,.05), 0 2px 8px rgba(15,23,42,.05);
 }
@@ -39,6 +39,9 @@ strong { font-weight: 600; color: var(--text) }
 .rt-sym--dep .rt-sym__head, .rt-deps__head { fill: var(--dep); stroke: none }
 .rt-sym--glyph { background: #BBF7D0 }
 .rt-sym--over { height: 12px; outline: 2px dashed var(--over); outline-offset: -2px }
+.rt-sym--locked { display: inline-flex; align-items: center; justify-content: center; border-left: 3px solid #6366F1; background: #C7D2FE; outline: 2px solid var(--lock); outline-offset: 1px }
+.rt-sym--risk { color: var(--over); outline-color: var(--over) }
+.rt-sym--locked svg, .rt-bar__lock { flex: none; fill: currentColor }
 .rt-sym--quarter, .rt-sym--today { width: 0; margin: 0 4px; border-left: 1px dotted var(--year) }
 .rt-sym--today { border-left: 2px solid var(--today) }
 
@@ -65,11 +68,14 @@ strong { font-weight: 600; color: var(--text) }
 .rt-bin-4 { background: #FCA5A5; color: #7F1D1D; font-weight: 700 }
 .rt-summary__key { gap: 6px; padding: 8px 20px 4px; font-size: 12px; color: var(--muted) }
 .rt-summary__comp { padding: 14px 20px 4px }
-.rt-composition { border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums }
-.rt-composition caption { padding-bottom: 6px; font-weight: 600; text-align: left }
-.rt-composition th, .rt-composition td { padding: 4px 12px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap }
-.rt-composition thead th { color: var(--muted); font-size: 12px; font-weight: 600 }
-.rt-composition th:first-child { padding-left: 0; text-align: left }
+.rt-commitments { margin-top: 16px }
+.rt-commitments th, .rt-commitments td { text-align: left !important }
+.rt-commitment--at_risk strong { color: var(--over) }
+:is(.rt-composition, .rt-commitments) { border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums }
+:is(.rt-composition, .rt-commitments) caption { padding-bottom: 6px; font-weight: 600; text-align: left }
+:is(.rt-composition, .rt-commitments) :is(th, td) { padding: 4px 12px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap }
+:is(.rt-composition, .rt-commitments) thead th { color: var(--muted); font-size: 12px; font-weight: 600 }
+:is(.rt-composition, .rt-commitments) th:first-child { padding-left: 0; text-align: left }
 .rt-composition-row--team th { padding-left: 16px; font-weight: 400 }
 .rt-composition__group th { padding-top: 10px; font-weight: 600 }
 .rt-composition__foot > * { color: var(--muted); font-weight: 600 }
@@ -167,6 +173,11 @@ td.rt-composition__notes, .rt-composition thead th:last-child { color: var(--mut
 .rt-bar--dep-ext::before { content: "↤" }
 .rt-bar--clip-l.rt-bar--dep-ext::before { content: "‹ ↤" }
 .rt-bar--over { outline: 2px dashed var(--over); outline-offset: 1px }
+/* Locked (CR-3): solid frame and padlock; at risk: both red */
+.rt-bar--locked { outline: 2px solid var(--lock); outline-offset: 1px; font-weight: 600 }
+.rt-bar--risk { outline-color: var(--over) }
+.rt-bar--risk .rt-bar__lock { color: var(--over) }
+.rt-bar__risk { flex: none; margin-left: auto; padding: 1px 6px; border-radius: 99px; background: var(--over); color: #FFF; font-size: 10.5px; font-weight: 700 }
 .rt-lead { position: absolute; top: 37px; z-index: 3; border-top: 1px dashed var(--accent); color: var(--accent); pointer-events: none }
 .rt-lead::before { background: var(--lane) }
 .rt-lead--cut::before { display: none }
@@ -201,7 +212,7 @@ td.rt-composition__notes, .rt-composition thead th:last-child { color: var(--mut
   :root {
     --bg: #0B1120; --surface: #111827; --text: #E5E7EB; --muted: #94A3B8; --grid: #1F2937; --year: #475569;
     --today: #FB7185; --today-ink: #0B1120; --over: #F87171; --tint: #151F31; --dep: #94A3B8; --meter: #818CF8;
-    --chip: #1E293B; --tip-bg: #F1F5F9; --tip-fg: #0F172A; --focus: #60A5FA;
+    --chip: #1E293B; --tip-bg: #F1F5F9; --tip-fg: #0F172A; --focus: #60A5FA; --lock: #F8FAFC;
     --bad-bg: #450A0A; --bad: #FCA5A5; --good-bg: #052E16; --good: #86EFAC;
     --ring: rgba(148,163,184,.16); --shadow: 0 1px 2px #0000004D, 0 2px 8px #00000040;
   }

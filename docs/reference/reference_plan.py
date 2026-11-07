@@ -1,7 +1,8 @@
 """rt reference plan oracle — TEST TOOLING ONLY, never import from src/.
 
 Produced the expected plan files scheduling-worked-example.expected.json,
-dependencies-example.expected.json and products-example.expected.json
+dependencies-example.expected.json, products-example.expected.json and
+lock-example.expected.json
 (requirements spec sections 4, 5, 7.12, 8).
 
 Implements: scheduling in delay and overflow modes, auto-start anchor,
@@ -9,7 +10,8 @@ finish-to-start dependencies, automatic horizon, visibility and flags,
 adjacency, product colours and DSATUR colouring (palette names only),
 utilisation and monthly load with half-up rounding, team indicators
 (DEV per slot, DEV per QA, median +/- 50 % or team_norms bands),
-W001-W005/W007/W009/W011/W013/W014 warnings.
+locked projects placed first at their promised start, lock risk (CR-3),
+W001-W005/W007/W009/W011/W013/W014/W015 warnings.
 Does NOT implement: input validation (assumes a valid file), error mode,
 custom hex colours, W006/W008-W010/W012, horizon cap.
 
@@ -90,7 +92,35 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         if ref in ids: return ids[ref]
         assert len(names[ref]) == 1, ref
         return names[ref][0]
+    byseq = {}
+
+    def free(lane, s, e):
+        return all(not (s < b and a < e) for a, b, _ in lane)
+
+    # CR-3 pass 1: locked projects in file order, exactly at their start month; no regular slot -> overflow lane
     for seq, p in enumerate(doc["projects"], 1):
+        if not p.get("locked", False):
+            continue
+        ongoing = bool(p.get("ongoing", False))
+        size = None if ongoing else p["size"]
+        weeks = None if ongoing else sizes[size]
+        req = month(p["start"])
+        e = INF if ongoing else req + dt.timedelta(days=weeks * 7)
+        L = lanes[p["team"]]
+        i = next((k for k in range(len(L)) if free(L[k], req, e)), None)
+        if i is None:
+            L.append([]); i = len(L) - 1
+        L[i].append((req, e, seq))
+        dl = p.get("depends_on") or []
+        dl = [dl] if isinstance(dl, str) else dl
+        byseq[seq] = dict(seq=seq, pid=p.get("id"), name=p["name"], team=p["team"], product=p.get("product"),
+                          size=size, weeks=weeks, ongoing=ongoing, locked=True, promised=p.get("promised_to"),
+                          req=req, earliest=req, deps=sorted(resolve(r) for r in dl), auto=False, reason=None,
+                          start=req, end=e, lane=i + 1, overflow=i >= tmap[p["team"]]["slots"], delay=0,
+                          color=p.get("color"), line=p.lc.line + 1, col=p.lc.col + 1)
+    for seq, p in enumerate(doc["projects"], 1):
+        if seq in byseq:
+            continue
         line, col = p.lc.line + 1, p.lc.col + 1
         ongoing = bool(p.get("ongoing", False))
         size = None if ongoing else p["size"]
@@ -101,15 +131,11 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         dl = [dl] if isinstance(dl, str) else dl
         deps = sorted(resolve(r) for r in dl)
         for dq in deps: assert dq < seq
-        dep_ready = max([plan[dq - 1]["end"] for dq in deps], default=req)
+        dep_ready = max([byseq[dq]["end"] for dq in deps], default=req)
         earliest = max(req, dep_ready)
         dur = None if ongoing else dt.timedelta(days=weeks * 7)
         L = lanes[p["team"]]
         nslots = tmap[p["team"]]["slots"]
-
-        def free(lane, s, e):
-            return all(not (s < b and a < e) for a, b, _ in lane)
-
         placed = None
         if mode == "delay" or auto:
             cands = sorted({earliest} | {b for lane in L[:nslots] for _, b, _ in lane if b != INF and b > earliest})
@@ -135,11 +161,31 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         reason = None
         if not auto and (dep_days or cap_days):
             reason = "dependency+capacity" if dep_days and cap_days else ("dependency" if dep_days else "capacity")
-        plan.append(dict(seq=seq, pid=p.get("id"), name=p["name"], team=p["team"], product=p.get("product"),
-                         size=size, weeks=weeks, ongoing=ongoing,
+        byseq[seq] = (dict(seq=seq, pid=p.get("id"), name=p["name"], team=p["team"], product=p.get("product"),
+                         size=size, weeks=weeks, ongoing=ongoing, locked=False, promised=None,
                          req=None if auto else req, earliest=earliest, deps=deps, auto=auto, reason=reason,
                          start=s, end=e, lane=i + 1, overflow=i >= nslots, delay=0 if auto else (s - req).days,
                          color=p.get("color"), line=line, col=col))
+    plan = [byseq[s] for s in sorted(byseq)]
+    # CR-3 lock risk: earliest start from the dependencies once everything is placed
+    for x in plan:
+        x["risk"] = None
+        if not x["locked"]:
+            continue
+        late = [byseq[d] for d in x["deps"] if byseq[d]["end"] != INF and byseq[d]["end"] > x["start"]]
+        x["earliest"] = max([x["start"]] + [byseq[d]["end"] for d in x["deps"] if byseq[d]["end"] != INF])
+        dep, cap = bool(late), x["overflow"]
+        if dep or cap:
+            x["risk"] = "dependency+capacity" if dep and cap else ("dependency" if dep else "capacity")
+        why = []
+        if late:
+            last = max(late, key=lambda d: (d["end"], -d["seq"]))
+            why.append(f'depends on "{last["name"]}", which ends {last["end"]}')
+        if cap:
+            n = tmap[x["team"]]["slots"]
+            who = f'the only slot of team "{x["team"]}" is' if n == 1 else f'all {n} slots of team "{x["team"]}" are'
+            why.append(f'{who} taken by locked projects; shown in overflow lane +{x["lane"] - n}')
+        x["why"] = "; ".join(why)
     # horizon
     hz = doc["roadmap"].get("horizon") or {}
     today = doc["roadmap"].get("today")
@@ -163,6 +209,8 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         if x["delay"] > 0: flags.append("delayed")
         if x["auto"]: flags.append("auto_start")
         if x["overflow"]: flags.append("over_capacity")
+        if x["locked"]: flags.append("locked")
+        if x["risk"]: flags.append("at_risk")
         if vs >= ve:
             x["vis"] = None; flags.append("hidden")
             warnings.append(("W004", x, f'project "{x["name"]}" is outside the horizon and not shown'))
@@ -178,7 +226,9 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         if x["delay"] > 0:
             why = {"capacity": f'no free slot in team "{x["team"]}"', "dependency": "waiting for dependencies", "dependency+capacity": f'waiting for dependencies, then no free slot in team "{x["team"]}"'}[x["reason"]]
             warnings.append(("W001", x, f'project "{x["name"]}" delayed {x["delay"]} days (requested {x["req"]}, starts {x["start"]}): {why}'))
-        if x["overflow"]:
+        if x["risk"]:
+            warnings.append(("W015", x, f'locked project "{x["name"]}" cannot keep its promised start {x["start"]}: {x["why"]}'))
+        elif x["overflow"]:
             warnings.append(("W011", x, f'project "{x["name"]}" exceeds team "{x["team"]}" capacity; placed in overflow lane +{x["lane"] - tmap[x["team"]]["slots"]}'))
         if "clipped_left" in flags:
             warnings.append(("W002", x, f'project "{x["name"]}" starts before the horizon; left part not shown'))
@@ -328,12 +378,13 @@ def run(path, on_conflict=None, hfrom=None, hto=None):
         projects.append({
             "seq": x["seq"], "id": x["pid"], "name": x["name"], "team": x["team"], "product": x["product"],
             "size": x["size"], "weeks": x["weeks"],
-            "ongoing": x["ongoing"], "requested_start": None if x["auto"] else ds(x["req"]),
+            "ongoing": x["ongoing"], "locked": x["locked"], "promised_to": x["promised"],
+            "requested_start": None if x["auto"] else ds(x["req"]),
             "depends_on": x["deps"], "earliest_start": ds(x["earliest"]), "start": ds(x["start"]),
             "end": None if x["ongoing"] else ds(x["end"]),
             "last_day": None if x["ongoing"] else ds(x["end"] - dt.timedelta(days=1)),
             "lane": x["lane"], "overflow": x["overflow"], "delay_days": x["delay"], "delay_reason": x["reason"],
-            "visible": None if not x["vis"] else {"start": ds(x["vis"][0]), "end": ds(x["vis"][1])},
+            "lock_risk": x["risk"], "visible": None if not x["vis"] else {"start": ds(x["vis"][0]), "end": ds(x["vis"][1])},
             "color_index": c, "color_name": None if c is None else PALETTE[c][0],
             "color_fill": None if c is None else PALETTE[c][1],
             "flags": x["flags"], "neighbors": sorted(nb.get(x["seq"], [])),

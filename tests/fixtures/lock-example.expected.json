@@ -1,0 +1,420 @@
+{
+  "rt_version": "1.0.0",
+  "format": 1,
+  "title": "Lock example",
+  "today": "2027-01-15",
+  "horizon": {
+    "start": "2027-01",
+    "end": "2027-06",
+    "start_date": "2027-01-01",
+    "end_exclusive": "2027-07-01",
+    "days": 181
+  },
+  "on_conflict": "delay",
+  "teams": [
+    {
+      "id": "alpha",
+      "subdomain": "core",
+      "slots": 1,
+      "overflow_lanes": 0,
+      "utilization": 0.4641,
+      "developers": null,
+      "testers": null,
+      "devs_per_slot": null,
+      "devs_per_qa": null,
+      "indicator_flags": [
+        "no_capacity"
+      ]
+    },
+    {
+      "id": "beta",
+      "subdomain": "core",
+      "slots": 2,
+      "overflow_lanes": 1,
+      "utilization": 0.232,
+      "developers": null,
+      "testers": null,
+      "devs_per_slot": null,
+      "devs_per_qa": null,
+      "indicator_flags": [
+        "no_capacity"
+      ]
+    }
+  ],
+  "team_indicators": {
+    "devs_per_slot": {
+      "all": null,
+      "median": null,
+      "low": null,
+      "high": null,
+      "source": null
+    },
+    "devs_per_qa": {
+      "all": null,
+      "median": null,
+      "low": null,
+      "high": null,
+      "source": null
+    }
+  },
+  "products": [],
+  "projects": [
+    {
+      "seq": 1,
+      "id": null,
+      "name": "Core API",
+      "team": "alpha",
+      "product": null,
+      "size": "L",
+      "weeks": 8,
+      "ongoing": false,
+      "locked": false,
+      "promised_to": null,
+      "requested_start": "2027-01-01",
+      "depends_on": [],
+      "earliest_start": "2027-01-01",
+      "start": "2027-03-01",
+      "end": "2027-04-26",
+      "last_day": "2027-04-25",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 59,
+      "delay_reason": "capacity",
+      "lock_risk": null,
+      "visible": {
+        "start": "2027-03-01",
+        "end": "2027-04-26"
+      },
+      "color_index": 4,
+      "color_name": "sky",
+      "color_fill": "#BAE6FD",
+      "flags": [
+        "delayed"
+      ],
+      "neighbors": [
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "seq": 2,
+      "id": null,
+      "name": "Partner launch",
+      "team": "alpha",
+      "product": null,
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "locked": true,
+      "promised_to": "Partner X",
+      "requested_start": "2027-02-01",
+      "depends_on": [],
+      "earliest_start": "2027-02-01",
+      "start": "2027-02-01",
+      "end": "2027-03-01",
+      "last_day": "2027-02-28",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "lock_risk": null,
+      "visible": {
+        "start": "2027-02-01",
+        "end": "2027-03-01"
+      },
+      "color_index": 5,
+      "color_name": "amber",
+      "color_fill": "#FDE68A",
+      "flags": [
+        "locked"
+      ],
+      "neighbors": [
+        1,
+        3
+      ]
+    },
+    {
+      "seq": 3,
+      "id": null,
+      "name": "Mobile release",
+      "team": "beta",
+      "product": null,
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "locked": true,
+      "promised_to": "Retail bank",
+      "requested_start": "2027-03-01",
+      "depends_on": [
+        1
+      ],
+      "earliest_start": "2027-04-26",
+      "start": "2027-03-01",
+      "end": "2027-03-29",
+      "last_day": "2027-03-28",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "lock_risk": "dependency",
+      "visible": {
+        "start": "2027-03-01",
+        "end": "2027-03-29"
+      },
+      "color_index": 0,
+      "color_name": "indigo",
+      "color_fill": "#C7D2FE",
+      "flags": [
+        "at_risk",
+        "locked"
+      ],
+      "neighbors": [
+        1,
+        2,
+        4,
+        6,
+        7
+      ]
+    },
+    {
+      "seq": 4,
+      "id": null,
+      "name": "Data migration",
+      "team": "beta",
+      "product": null,
+      "size": "S",
+      "weeks": 2,
+      "ongoing": false,
+      "locked": true,
+      "promised_to": null,
+      "requested_start": "2027-03-01",
+      "depends_on": [],
+      "earliest_start": "2027-03-01",
+      "start": "2027-03-01",
+      "end": "2027-03-15",
+      "last_day": "2027-03-14",
+      "lane": 2,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "lock_risk": null,
+      "visible": {
+        "start": "2027-03-01",
+        "end": "2027-03-15"
+      },
+      "color_index": 1,
+      "color_name": "green",
+      "color_fill": "#BBF7D0",
+      "flags": [
+        "locked"
+      ],
+      "neighbors": [
+        3,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "seq": 5,
+      "id": null,
+      "name": "Audit",
+      "team": "beta",
+      "product": null,
+      "size": "S",
+      "weeks": 2,
+      "ongoing": false,
+      "locked": true,
+      "promised_to": "Regulator",
+      "requested_start": "2027-03-01",
+      "depends_on": [],
+      "earliest_start": "2027-03-01",
+      "start": "2027-03-01",
+      "end": "2027-03-15",
+      "last_day": "2027-03-14",
+      "lane": 3,
+      "overflow": true,
+      "delay_days": 0,
+      "delay_reason": null,
+      "lock_risk": "capacity",
+      "visible": {
+        "start": "2027-03-01",
+        "end": "2027-03-15"
+      },
+      "color_index": 6,
+      "color_name": "violet",
+      "color_fill": "#DDD6FE",
+      "flags": [
+        "at_risk",
+        "locked",
+        "over_capacity"
+      ],
+      "neighbors": [
+        4,
+        6
+      ]
+    },
+    {
+      "seq": 6,
+      "id": null,
+      "name": "Reporting",
+      "team": "beta",
+      "product": null,
+      "size": "M",
+      "weeks": 4,
+      "ongoing": false,
+      "locked": false,
+      "promised_to": null,
+      "requested_start": "2027-03-01",
+      "depends_on": [],
+      "earliest_start": "2027-03-01",
+      "start": "2027-03-15",
+      "end": "2027-04-12",
+      "last_day": "2027-04-11",
+      "lane": 2,
+      "overflow": false,
+      "delay_days": 14,
+      "delay_reason": "capacity",
+      "lock_risk": null,
+      "visible": {
+        "start": "2027-03-15",
+        "end": "2027-04-12"
+      },
+      "color_index": 2,
+      "color_name": "orange",
+      "color_fill": "#FED7AA",
+      "flags": [
+        "delayed"
+      ],
+      "neighbors": [
+        3,
+        4,
+        5,
+        7
+      ]
+    },
+    {
+      "seq": 7,
+      "id": null,
+      "name": "Polish",
+      "team": "beta",
+      "product": null,
+      "size": "S",
+      "weeks": 2,
+      "ongoing": false,
+      "locked": false,
+      "promised_to": null,
+      "requested_start": null,
+      "depends_on": [
+        2
+      ],
+      "earliest_start": "2027-03-01",
+      "start": "2027-03-29",
+      "end": "2027-04-12",
+      "last_day": "2027-04-11",
+      "lane": 1,
+      "overflow": false,
+      "delay_days": 0,
+      "delay_reason": null,
+      "lock_risk": null,
+      "visible": {
+        "start": "2027-03-29",
+        "end": "2027-04-12"
+      },
+      "color_index": 3,
+      "color_name": "pink",
+      "color_fill": "#FBCFE8",
+      "flags": [
+        "auto_start"
+      ],
+      "neighbors": [
+        1,
+        3,
+        4,
+        6
+      ]
+    }
+  ],
+  "monthly_load": {
+    "months": [
+      "2027-01",
+      "2027-02",
+      "2027-03",
+      "2027-04",
+      "2027-05",
+      "2027-06"
+    ],
+    "teams": [
+      {
+        "team": "alpha",
+        "load": [
+          0.0,
+          1.0,
+          1.0,
+          0.8333,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "team": "beta",
+        "load": [
+          0.0,
+          0.0,
+          1.2258,
+          0.3667,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "subdomains": [
+      {
+        "subdomain": "core",
+        "load": [
+          0.0,
+          0.3333,
+          1.1505,
+          0.5222,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "total": [
+      0.0,
+      0.3333,
+      1.1505,
+      0.5222,
+      0.0,
+      0.0
+    ]
+  },
+  "warnings": [
+    {
+      "code": "W001",
+      "line": 29,
+      "column": 5,
+      "message": "project \"Core API\" delayed 59 days (requested 2027-01-01, starts 2027-03-01): no free slot in team \"alpha\""
+    },
+    {
+      "code": "W015",
+      "line": 39,
+      "column": 5,
+      "message": "locked project \"Mobile release\" cannot keep its promised start 2027-03-01: depends on \"Core API\", which ends 2027-04-26"
+    },
+    {
+      "code": "W015",
+      "line": 51,
+      "column": 5,
+      "message": "locked project \"Audit\" cannot keep its promised start 2027-03-01: all 2 slots of team \"beta\" are taken by locked projects; shown in overflow lane +1"
+    },
+    {
+      "code": "W001",
+      "line": 57,
+      "column": 5,
+      "message": "project \"Reporting\" delayed 14 days (requested 2027-03-01, starts 2027-03-15): no free slot in team \"beta\""
+    }
+  ]
+}

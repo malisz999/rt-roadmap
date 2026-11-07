@@ -14,7 +14,7 @@ from rt.options import ConvertOptions
 
 def test_version_goes_to_stdout() -> None:
     code, io = run(["--version"])
-    assert code == 0 and io.stdout == b"rt 1.2.0\n" and io.stderr == ""
+    assert code == 0 and io.stdout == b"rt 1.3.0\n" and io.stderr == ""
 
 
 @pytest.mark.parametrize(
@@ -168,7 +168,7 @@ def test_main_entry_and_system_io(monkeypatch: pytest.MonkeyPatch, capsysbinary:
         monkeypatch.setattr("sys.argv", ["rt", "--version"])
         cli.main_entry()
     assert info.value.code == 0
-    assert capsysbinary.readouterr().out == b"rt 1.2.0\n"
+    assert capsysbinary.readouterr().out == b"rt 1.3.0\n"
 
 
 def test_closed_pipe_error_type() -> None:

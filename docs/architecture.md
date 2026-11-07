@@ -4,6 +4,7 @@ Oct 23, 2026 · @Artur
 
 Revised Oct 29, 2026: CR-1 products (sections 4.2, 5, 6.1, 6.5, 7.1, 10).
 Revised Oct 31, 2026: CR-2 team indicators (sections 4, 5, 6.1, 6.9, 7.3, 7.4, 10).
+Revised Nov 7, 2026: CR-3 locked projects (sections 5, 6.2, 6.3, 6.8, 7.3, 7.4).
 
 **rt is built as a Python 3.12 command-line package with two runtime dependencies (ruamel.yaml, Jinja2), organised as a pipeline of pure functions around one immutable `Plan` object.** This document supplements the requirements specification ("RS"); where the two differ, the RS wins unless section 13 here lists an agreed clarification. Section numbers prefixed "RS" point into the requirements.
 
@@ -256,10 +257,11 @@ def schedule(m, mode, anchor, diags):
 - `first_fit` builds candidates `{earliest} ∪ {lane ends > earliest}` over regular lanes, sorted, and tries lanes `1…N` per candidate (RS SC-5 step 2–3).
 - Delay split: `dep_days = earliest − requested`, `cap_days = start − earliest`; the reason is `dependency`, `capacity` or `dependency+capacity` from which parts are non-zero. Auto-start projects have no requested date, so no delay.
 - In `ERROR` mode the scheduler keeps placing conflicting projects in virtual overflow lanes so that every conflict is reported in one run (RS SC-7), then returns `None`.
+- **Locked projects (CR-3, RS SC-14/SC-15).** Before the loop above, `_place_locked` puts every locked project, in file order, at its requested start with `board.fit_at` (regular lanes, then overflow lanes, at that date only), whatever the mode. The loop then skips them, and placements are kept in a `dict[seq, Placement]` so dependencies on locked projects resolve. After the loop, `_with_risk` computes each locked placement's earliest start from its dependencies and its `lock_risk` (`dependency`, `capacity` or both, reusing `delay_reason`). `Placement` gains `locked` and `lock_risk`; plan.build emits W015 instead of W011 for them.
 
 ### 6.3 Horizon, visibility, flags
 
-Direct transcription of RS SC-9 and SC-10. Flags are collected in a `set` and emitted sorted. Hidden projects keep their placement and appear in the plan.
+Direct transcription of RS SC-9 and SC-10. Flags are collected in a `set` and emitted sorted; `locked` and `at_risk` (CR-3) come from the placement. Hidden projects keep their placement and appear in the plan.
 
 ### 6.4 Adjacency
 
@@ -364,10 +366,10 @@ The page is static HTML positioned in pixels: every bar, line and mark gets an a
 | --- | --- |
 | `page.html.j2` | Skeleton, inlined `<style>`, includes below |
 | `_head.html.j2`, `_legend.html.j2` | Header block, legend chips and symbols |
-| `_summary.html.j2` | KPI tiles and monthly load `<table>` (`colgroup` fixes column widths to `month_width`) |
+| `_summary.html.j2` | KPI tiles, monthly load `<table>` (`colgroup` fixes column widths to `month_width`), team composition and, with locked projects, the Commitments table (CR-3) |
 | `_scale.html.j2` | Year, quarter and month rows, Today label |
 | `_section.html.j2` | Subdomain card, marks layer, connectors SVG, teams |
-| `_bar.html.j2` | Macro `bar(b: BarVM)` |
+| `_bar.html.j2` | Macro `bar(b: BarVM)`; locked bars start with the padlock SVG, at-risk bars carry the `! at risk` pill (CR-3) |
 | `_indicator.html.j2` | Macro `chip(c: IndicatorVM)`: team label chips and marked cells of the composition table |
 | `_warnings.html.j2` | Warnings `<details>` |
 
@@ -375,7 +377,7 @@ Jinja environment: `autoescape=True`, `undefined=StrictUndefined`, `trim_blocks=
 
 ### 7.4 CSS
 
-- One file `static/rt.css` (target ≤ 15 KB after compaction: comments, whitespace around braces and semicolons, and the space after `:` are dropped; commas keep their space so the font stack stays verbatim), read with `importlib.resources` and inlined. Order: tokens → base → page blocks → summary → scale → section → team → lane → bar and states → connectors → tooltip → warnings → print → dark mode.
+- One file `static/rt.css` (target ≤ 16 KB after compaction; raised from 15 KB by CR-3: comments, whitespace around braces and semicolons, and the space after `:` are dropped; commas keep their space so the font stack stays verbatim), read with `importlib.resources` and inlined. Order: tokens → base → page blocks → summary → scale → section → team → lane → bar and states → connectors → tooltip → warnings → print → dark mode.
 - All colours are custom properties on `:root` (RS 7.8 tokens), redefined in `@media (prefers-color-scheme: dark)`. Per-bar colours arrive as inline custom properties `--fill`, `--accent`, `--ink`; inline styles carry nothing else besides `left`, `width` and, for the summary, nothing at all (bins are classes `rt-bin-0` … `rt-bin-4`).
 - Every class starts with `rt-`; BEM-style `block__element--modifier`. Classes and `data-*` attributes in RS 7.10 are a public contract and MUST NOT be renamed.
 - Print block per RS OUT-25, plus `position: static` for all sticky elements and `.rt-tip { display: none }`.

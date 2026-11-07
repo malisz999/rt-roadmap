@@ -613,6 +613,15 @@ class _Builder:
         if ongoing_ok and size_given == ongoing:  # both, or neither (RS 3.2)
             self.fail(ent, Code.E032, "size", project=name if name is not None else f"#{seq}")
 
+        locked = self.flag(ent, "locked")
+        promised_to = self.string(ent, "promised_to", F.PROMISED_TO_LEN)
+        label = name if name is not None else f"#{seq}"
+        if locked and "start" not in node:  # a promise needs a date (CR-3, E050)
+            self.fail(ent, Code.E050, "locked", project=label)
+        locked_valid = isinstance(node.get("locked", False), bool)  # an invalid value is E011 already
+        if "promised_to" in node and not locked and locked_valid:  # CR-3, E051
+            self.fail(ent, Code.E051, "promised_to", project=label)
+
         refs = self.depends_on(ent)
         description = self.string(ent, "description", F.PROJECT_DESCRIPTION_LEN)
 
@@ -634,7 +643,18 @@ class _Builder:
             field_pos=MappingProxyType(dict(ent.field_pos)),
             field_column=MappingProxyType(dict(ent.field_column)),
             incomplete=ent.bad,
+            locked=locked,
+            promised_to=promised_to,
         )
+
+    def flag(self, ent: _Ent, key: str) -> bool:
+        """An optional boolean (`locked`); anything else is E011 and counts as false."""
+        value = self.get(ent, key)
+        if isinstance(value, bool):
+            return value
+        if value is not MISSING:
+            self.fail(ent, Code.E011, key, detail=f'"{key}" must be true or false, got {F.describe(value)}')
+        return False
 
     def depends_on(self, ent: _Ent) -> tuple[DepRef, ...]:
         """A list of ids or names, or a single string (RS IN-9)."""

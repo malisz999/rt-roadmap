@@ -19,7 +19,7 @@ Paths below are relative to this skill's folder (`.claude/skills/rt-roadmap/` in
 ## 0. Find rt
 
 Use the first that works and remember it as `RT` for the session:
-`rt --version` (installed; needs 1.1.0+ for products, 1.2.0+ for team indicators) · `uv run rt --version` (inside the rt repository) ·
+`rt --version` (installed; needs 1.1.0+ for products, 1.2.0+ for team indicators, 1.3.0+ for locked projects) · `uv run rt --version` (inside the rt repository) ·
 `python3 -m rt --version` · a release binary `rt-<version>-<os>-<arch>`.
 If none works and this skill has a `wheels/` folder (the exported version does), install it:
 `pip install wheels/rt_roadmap-*.whl` (add `--break-system-packages` if pip refuses; it pulls ruamel.yaml and
@@ -39,6 +39,7 @@ plan_summary.py needs nothing). Save outputs the user should get (HTML, YAML) wh
 | team norms, targets | `team_norms` | Optional roadmap-wide `{ min, max }` per indicator; replaces the median rule |
 | product | `products[]` | Owned by one domain (`domain:`); its projects may run in any team; all its bars share one colour |
 | project, initiative, epic | `projects[]` | Exactly one team; `size` (weeks via `sizes`) or `ongoing: true`; optional `start`, `depends_on`, `product` |
+| promised date, commitment, contractual start | `locked: true` (+ `promised_to`) on a project with `start` | Placed first, never moved; red "promise at risk" + W015 when it cannot be kept |
 | T-shirt size | `sizes` | Label → whole weeks |
 | priority | order of `projects[]` | Earlier = scheduled first |
 
@@ -74,7 +75,8 @@ bar is drawn in the building team's section, and the legend and tooltip show the
 
 - Never edit a user's roadmap in place without saying so; write to a new file or show the diff first.
 - Do not change project order, sizes, fixed `start` months or dependencies to make the numbers look better
-  unless the user agrees: they are business decisions. Team choices among the user's candidates are yours to
+  unless the user agrees: they are business decisions. Never unlock, move or re-team a `locked` project: it is a
+  promise. Report a promise at risk (W015) and its reason instead. Team choices among the user's candidates are yours to
   optimise.
 - One project = one team. Split shared work into several projects linked by `product` and `depends_on`.
 - Raising `parallel_projects` means adding people; propose it, do not do it silently. It also lowers that

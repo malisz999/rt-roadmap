@@ -1,0 +1,17 @@
+# expect: E051 at 17:18
+version: 1
+roadmap:
+  title: promised_to without locked
+sizes:
+  M: 4
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - { id: alpha, name: Alpha, parallel_projects: 1 }
+projects:
+  - name: Partner launch
+    team: alpha
+    size: M
+    start: 2027-02
+    promised_to: Partner X

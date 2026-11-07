@@ -44,7 +44,7 @@ scheduling:
 
 # Optional targets for the team indicators shown under each team label:
 # DEV per slot = developers / parallel_projects, DEV per QA = developers / testers.
-# Without them, values more than 33 % away from the median of all teams are marked.
+# Without them, values more than 50 % away from the median of all teams are marked.
 # team_norms:
 #   devs_per_slot: { min: 2, max: 3 }
 #   devs_per_qa: { max: 4 }

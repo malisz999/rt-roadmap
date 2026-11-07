@@ -57,6 +57,8 @@ projects:                           # required (may be [] = W010); FILE ORDER = 
     start: 2027-01                  # optional requested start month; omit = auto-start (first free slot)
     size: L                         # a key of sizes ... 
     # ongoing: true                 # ... OR ongoing: true (exactly one of the two)
+    locked: true                    # optional (rt 1.3+): start is promised; placed first, never moved; needs start
+    promised_to: Allegro            # optional, 1–100, only with locked: true
     depends_on: [other-id]          # optional ids or unique names; must be ABOVE this project; not ongoing
     description: Subskrypcje        # optional, ≤ 500, tooltip
     color: sky                      # optional pin; wins over the product colour
@@ -69,6 +71,9 @@ projects:                           # required (may be [] = W010); FILE ORDER = 
 - **One team per project.** Work shared by two teams = two projects (same `product`, often linked with
   `depends_on`).
 - **Sizes are whole weeks** (7 calendar days); no holidays. Durations: `weeks × 7` days.
+- **Locked** projects (`locked: true`, rt 1.3+) keep their `start` whatever happens: rt places them before all
+  others and schedules the rest around them. A promise that cannot be kept (late dependency, or other locked work
+  fills the team) stays at its date, is flagged `at_risk` (red frame) and gives W015. Lock only real promises.
 - **Ongoing** projects (`ongoing: true`, no `size`) hold a slot forever from their start. A team whose every slot
   is held by ongoing work cannot schedule anything else (E060).
 - **Delay** happens only to projects with a `start`; auto-start projects simply start when possible.
@@ -98,6 +103,7 @@ Format: `file:line:col: error|warning CODE: message`. Exit 0 ok (warnings allowe
 | E033 | Bad colour | Palette name or `#RRGGBB` |
 | E034–E037 | Unknown, ambiguous, ongoing, self or later dependency | Use ids; move the dependency above |
 | E038 / E039 | Unknown product / product domain not a subdomain | Fix the id |
+| E050 / E051 | Locked project without `start` / `promised_to` without `locked: true` | Add the start month / add the lock |
 | E040–E043 | Horizon end < start / > 120 months / empty sizes / empty subdomains | — |
 | E060 | Every slot of the team is held by ongoing projects | More slots, or end the ongoing work |
 | E061 | Conflict in `error` mode | Use `delay`, or re-plan |
@@ -108,6 +114,7 @@ Format: `file:line:col: error|warning CODE: message`. Exit 0 ok (warnings allowe
 | W010 | No projects | — |
 | W011 | Overflow lane used (`overflow` mode) | More slots or re-allocate |
 | W012 | Automatic horizon capped at 120 months | Set the horizon |
+| W015 | Locked project cannot keep its promised start (late dependency or full team) | Move the dependency earlier, add a slot, or renegotiate the promise |
 | W013 / W014 | Product without projects / more than 32 products share colours | Informational |
 
 ## Team indicators (rt 1.2+)

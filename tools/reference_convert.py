@@ -25,12 +25,13 @@ from pathlib import Path
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
-CANONICAL = ["name", "size", "team", "product", "subdomain", "start", "ongoing", "depends_on", "id", "description",
-             "color"]
+CANONICAL = ["name", "size", "team", "product", "subdomain", "start", "ongoing", "locked", "promised_to",
+             "depends_on", "id", "description", "color"]
 DEFAULT_SIZES = [("XS", 1), ("S", 2), ("M", 4), ("L", 8), ("XL", 13), ("XXL", 26)]
 TRUE = {"true", "yes", "y", "1", "x", "tak", "t"}
 FALSE = {"false", "no", "n", "0", "nie", ""}
-OUT_KEYS = ["id", "name", "team", "product", "start", "size", "ongoing", "depends_on", "description", "color"]
+OUT_KEYS = ["id", "name", "team", "product", "start", "size", "ongoing", "locked", "promised_to", "depends_on",
+            "description", "color"]
 
 
 def nfc(s: str) -> str:
@@ -214,6 +215,10 @@ def main() -> int:
             p["size"] = match_size(size_raw) or size_raw
         if ongoing:
             p["ongoing"] = True
+        if cell(rec, "locked").casefold() in TRUE:  # CR-3
+            p["locked"] = True
+        if cell(rec, "promised_to"):
+            p["promised_to"] = cell(rec, "promised_to")
         deps = [nfc(d) for d in re.split(r"[|\n]", cell(rec, "depends_on")) if nfc(d)]
         if deps:
             seq = CommentedSeq(deps)

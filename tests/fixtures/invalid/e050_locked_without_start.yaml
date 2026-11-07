@@ -1,0 +1,16 @@
+# expect: E050 at 15:13
+version: 1
+roadmap:
+  title: Locked without a start
+sizes:
+  M: 4
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - { id: alpha, name: Alpha, parallel_projects: 1 }
+projects:
+  - name: Partner launch
+    team: alpha
+    locked: true
+    size: M

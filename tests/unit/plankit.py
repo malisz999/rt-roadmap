@@ -198,6 +198,8 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
                 color=ColorSpec(str(color), None, str(color)) if color else None,
                 pos=_pos(seq),
                 product_id=str(p["product"]) if p.get("product") else None,
+                locked=bool(p.get("locked", False)),
+                promised_to=str(p["promised_to"]) if p.get("promised_to") else None,
             )
         )
     products = tuple(
@@ -230,7 +232,7 @@ def _to_plan(doc: Any, out: dict[str, Any]) -> Plan:
     planned = tuple(_project(pp) for pp in out["projects"])
     team_plans = tuple(_team_plan(tp, planned, h0, h1) for tp in out["teams"])
     return Plan(
-        rt_version="1.2.0",
+        rt_version="1.3.0",
         format=1,
         title=out["title"],
         today=settings.today,
@@ -288,6 +290,8 @@ def _project(pp: dict[str, Any]) -> PlannedProject:
         size=pp["size"],
         weeks=pp["weeks"],
         ongoing=pp["ongoing"],
+        locked=pp.get("locked", False),
+        promised_to=pp.get("promised_to"),
         requested_start=_d(pp["requested_start"]),
         depends_on=tuple(pp["depends_on"]),
         earliest_start=earliest,
@@ -298,6 +302,7 @@ def _project(pp: dict[str, Any]) -> PlannedProject:
         overflow=pp["overflow"],
         delay_days=pp["delay_days"],
         delay_reason=pp["delay_reason"],
+        lock_risk=pp.get("lock_risk"),
         visible=None if vis is None else VisibleOut(parse_date(vis["start"]), parse_date(vis["end"])),
         color_index=ci,
         color_name=pp["color_name"],

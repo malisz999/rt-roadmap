@@ -234,6 +234,17 @@ def _project(ctx: _Context, row: CsvRecord) -> _Row:
         ctx.suppress.add((row.line, Code.E032))
     elif ongoing:
         node["ongoing"] = True
+    locked_raw = cols.cell(cells, "locked")  # CR-3: the same words as ongoing, so 0/1 works in spreadsheets
+    locked = parse_ongoing(locked_raw)
+    if locked is None:
+        detail = f'"locked" must be one of {_ONGOING_WORDS}, got "{locked_raw}"'
+        diags.error(Code.E011, ctx.pos(row.line, "locked"), column=cols.header("locked"), detail=detail)
+        ctx.suppress.add((row.line, Code.E051))
+    elif locked:
+        node["locked"] = True
+    promised_to = cols.cell(cells, "promised_to")
+    if promised_to:
+        node["promised_to"] = promised_to
     deps = split_depends(cols.cell(cells, "depends_on"))
     if deps:
         seq = CommentedSeq(deps)

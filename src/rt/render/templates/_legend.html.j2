@@ -13,6 +13,10 @@
 <span class="rt-legend__item"><span class="rt-sym rt-sym--glyph" aria-hidden="true">↤</span>Depends on a project not linked here</span>
 <span class="rt-legend__item"><span class="rt-sym rt-sym--glyph" aria-hidden="true">‹ ›</span>Clipped at horizon</span>
 <span class="rt-legend__item"><span class="rt-sym rt-sym--over" aria-hidden="true"></span>Over capacity</span>
+{% if page.legend.locks %}
+<span class="rt-legend__item"><span class="rt-sym rt-sym--locked" aria-hidden="true"><svg width="9" height="11" viewBox="0 0 12 14" focusable="false"><path d="M3.2 6.2V4.3a2.8 2.8 0 0 1 5.6 0v1.9" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="1" y="6" width="10" height="8" rx="1.6"/></svg></span>Locked: date promised</span>
+<span class="rt-legend__item"><span class="rt-sym rt-sym--locked rt-sym--risk" aria-hidden="true"><svg width="9" height="11" viewBox="0 0 12 14" focusable="false"><path d="M3.2 6.2V4.3a2.8 2.8 0 0 1 5.6 0v1.9" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="1" y="6" width="10" height="8" rx="1.6"/></svg></span>Promise at risk</span>
+{% endif %}
 <span class="rt-legend__item"><span class="rt-sym rt-sym--quarter" aria-hidden="true"></span>Quarter start</span>
 <span class="rt-legend__item"><span class="rt-sym rt-sym--today" aria-hidden="true"></span>Today</span>
 </div>

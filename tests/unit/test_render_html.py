@@ -291,7 +291,7 @@ projects:
     )
 
 
-CSS_BUDGET = 15 * 1024  # ADS 7.4: inlined stylesheet ≤ 15 KB
+CSS_BUDGET = 16 * 1024  # ADS 7.4: inlined stylesheet ≤ 16 KB (15 KB before CR-3)
 BAR_BUDGET = 1331  # ADS 7.4 estimates about 1.2 KB of HTML per bar; asserted as ≤ 1.3 KB
 
 

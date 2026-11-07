@@ -1,0 +1,23 @@
+# expect: W015 at 19:5
+version: 1
+roadmap:
+  title: Two promises, one slot
+  today: 2027-01-15
+sizes:
+  M: 4
+subdomains:
+  - id: core
+    name: Core
+    teams:
+      - { id: alpha, name: Alpha, parallel_projects: 1 }
+projects:
+  - name: First promise
+    team: alpha
+    size: M
+    start: 2027-02
+    locked: true
+  - name: Second promise
+    team: alpha
+    size: M
+    start: 2027-02
+    locked: true

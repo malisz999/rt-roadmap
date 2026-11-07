@@ -71,6 +71,26 @@ projects:
 
 Projects without `product` are coloured as before. A project's own `color` wins over its product's colour.
 
+## Locked projects
+
+A locked project's start month has been promised to the business, a customer or a partner. rt places locked
+projects first, exactly at their start, and never moves them; other projects are scheduled around them:
+
+```yaml
+projects:
+  - name: Partner launch
+    team: core
+    size: M
+    start: 2027-02                   # required for a locked project
+    locked: true
+    promised_to: Partner X           # optional
+```
+
+Locked bars have a dark frame and a padlock. When a promise cannot be kept (a dependency ends later, or other locked
+work fills every slot of the team), the bar stays at its date, turns red ("promise at risk") and rt warns W015.
+`--summary` adds a "Commitments" table listing every promise and its status. In `rt convert`, a `locked` column
+accepts the same values as `ongoing` (`1`/`0`, `yes`/`no`, `tak`/`nie`, `x`).
+
 ## Team indicators
 
 Each team label shows two ratios that make team composition comparable: **DEV per slot** (developers ÷

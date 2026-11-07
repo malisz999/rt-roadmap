@@ -82,6 +82,8 @@
       "size": "L",
       "weeks": 8,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": "2027-01-01",
       "depends_on": [],
       "earliest_start": "2027-01-01",
@@ -92,6 +94,7 @@
       "overflow": false,
       "delay_days": 0,
       "delay_reason": null,
+      "lock_risk": null,
       "visible": {
         "start": "2027-01-01",
         "end": "2027-02-26"
@@ -114,6 +117,8 @@
       "size": "M",
       "weeks": 4,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": "2027-01-01",
       "depends_on": [
         1
@@ -126,6 +131,7 @@
       "overflow": false,
       "delay_days": 56,
       "delay_reason": "dependency",
+      "lock_risk": null,
       "visible": {
         "start": "2027-02-26",
         "end": "2027-03-26"
@@ -151,6 +157,8 @@
       "size": "M",
       "weeks": 4,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": null,
       "depends_on": [],
       "earliest_start": "2027-01-01",
@@ -161,6 +169,7 @@
       "overflow": false,
       "delay_days": 0,
       "delay_reason": null,
+      "lock_risk": null,
       "visible": {
         "start": "2027-01-01",
         "end": "2027-01-29"
@@ -184,6 +193,8 @@
       "size": "S",
       "weeks": 2,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": null,
       "depends_on": [
         2
@@ -196,6 +207,7 @@
       "overflow": false,
       "delay_days": 0,
       "delay_reason": null,
+      "lock_risk": null,
       "visible": {
         "start": "2027-03-26",
         "end": "2027-04-09"
@@ -220,6 +232,8 @@
       "size": null,
       "weeks": null,
       "ongoing": true,
+      "locked": false,
+      "promised_to": null,
       "requested_start": null,
       "depends_on": [],
       "earliest_start": "2027-01-01",
@@ -230,6 +244,7 @@
       "overflow": false,
       "delay_days": 0,
       "delay_reason": null,
+      "lock_risk": null,
       "visible": {
         "start": "2027-01-01",
         "end": "2027-07-01"
@@ -255,6 +270,8 @@
       "size": "S",
       "weeks": 2,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": "2027-02-01",
       "depends_on": [
         1,
@@ -268,6 +285,7 @@
       "overflow": false,
       "delay_days": 53,
       "delay_reason": "dependency",
+      "lock_risk": null,
       "visible": {
         "start": "2027-03-26",
         "end": "2027-04-09"
@@ -292,6 +310,8 @@
       "size": "S",
       "weeks": 2,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": "2027-03-01",
       "depends_on": [
         1
@@ -304,6 +324,7 @@
       "overflow": false,
       "delay_days": 0,
       "delay_reason": null,
+      "lock_risk": null,
       "visible": {
         "start": "2027-03-01",
         "end": "2027-03-15"
@@ -326,6 +347,8 @@
       "size": "S",
       "weeks": 2,
       "ongoing": false,
+      "locked": false,
+      "promised_to": null,
       "requested_start": "2027-02-01",
       "depends_on": [
         2
@@ -338,6 +361,7 @@
       "overflow": false,
       "delay_days": 67,
       "delay_reason": "dependency+capacity",
+      "lock_risk": null,
       "visible": {
         "start": "2027-04-09",
         "end": "2027-04-23"

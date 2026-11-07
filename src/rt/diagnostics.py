@@ -55,6 +55,12 @@ class Code(Enum):
     E041 = ("E041", "horizon spans {months} months; maximum is 120")
     E042 = ("E042", "sizes must define at least one size")
     E043 = ("E043", "subdomains must contain at least one subdomain")
+    # Locked projects (CR-3)
+    E050 = ("E050", 'project "{project}" is locked but has no start; a locked project needs a start month')
+    E051 = (
+        "E051",
+        'project "{project}" has promised_to but is not locked; add locked: true or remove promised_to',
+    )
     # Scheduling (exit 3)
     E060 = (
         "E060",
@@ -84,6 +90,7 @@ class Code(Enum):
     W012 = ("W012", "automatic horizon capped at 120 months ({start} to {end})")
     W013 = ("W013", 'product "{product}" has no projects')
     W014 = ("W014", 'products "{first}" and "{second}" share colour "{color}" (more than {size} products)')
+    W015 = ("W015", 'locked project "{project}" cannot keep its promised start {start}: {why}')
     W020 = ("W020", "{detail}")
     W021 = ("W021", 'day of "{value}" ignored; using {month}')
 

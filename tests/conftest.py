@@ -34,12 +34,14 @@ DE_PLAN = FIXTURES / "dependencies-example.expected.json"
 EX = FIXTURES / "roadmap.example.yaml"
 PE = FIXTURES / "products-example.yaml"
 PE_PLAN = FIXTURES / "products-example.expected.json"
+LE = FIXTURES / "lock-example.yaml"
+LE_PLAN = FIXTURES / "lock-example.expected.json"
 MINIMAL = FIXTURES / "roadmap.minimal.yaml"
 SCHEMA = FIXTURES / "roadmap.schema.json"
 
 PL_MAP = "Projekt=name,Rozmiar=size,Zespół=team,Start=start,Zależności=depends_on,Ciągły=ongoing,Opis=description"
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 DIAG_RE = re.compile(

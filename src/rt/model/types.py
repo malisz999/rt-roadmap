@@ -186,6 +186,8 @@ class Project:
     field_pos: Mapping[str, Pos] = EMPTY_POS  # value positions: "team", "size", "start", ...
     field_column: Mapping[str, str] = EMPTY_STR  # CSV header per field when the project came from rt convert
     incomplete: bool = False
+    locked: bool = False  # CR-3: start is a promise; placed first, never moved (RS SC-14)
+    promised_to: str | None = None
 
     @property
     def auto_start(self) -> bool:
