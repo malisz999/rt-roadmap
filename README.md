@@ -1,4 +1,4 @@
-# rt — roadmap renderer (roadmap as a code)
+# rt — roadmap renderer (Roadmap as Code)
 
 `rt` reads one hand-written YAML file describing subdomains, teams, t-shirt sizes and projects, schedules the
 projects into each team's parallel slots, and writes one self-contained HTML page: month-scaled swimlanes grouped
