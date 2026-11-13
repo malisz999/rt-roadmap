@@ -201,6 +201,13 @@ def test_base_with_single_team_is_used_for_rows_without_team() -> None:
     assert io.stdout.decode().endswith("projects:\n  - name: A\n    team: solo\n    size: M\n")
 
 
+def test_crlf_base_file_gives_lf_output() -> None:
+    """A base file saved with Windows line endings (Notepad) converts to the same LF bytes (RS CV-18)."""
+    io = _io(b"", **{"projects.pl.csv": PL_CSV, "teams.base.yaml": BASE.replace(b"\n", b"\r\n")})
+    assert _pl(io, "-o", "roadmap.yaml", name="projects.pl.csv") == 0
+    assert io.files["roadmap.yaml"] == PL_YAML
+
+
 def test_at_55_stdin_twice() -> None:
     outs = []
     for _ in range(2):

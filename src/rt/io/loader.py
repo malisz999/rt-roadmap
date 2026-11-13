@@ -90,8 +90,9 @@ def load(data: bytes, source: str, diags: Collector) -> RawDoc | None:
 
 
 def load_text(text: str, source: str, diags: Collector) -> RawDoc | None:
-    """Parse already decoded text; see load(). A leading BOM character is ignored."""
-    text = text.removeprefix("﻿")
+    """Parse already decoded text; see load(). A leading BOM character is ignored, and CRLF line breaks (files saved
+    on Windows) become LF, so round-tripped comments never carry a stray CR into rt convert's LF output (RS CV-18)."""
+    text = text.removeprefix("﻿").replace("\r\n", "\n")
     if not text.strip():
         diags.report(Code.E001, Pos(1, 1, source), detail="input is empty (did the previous command fail?)")
         return None
