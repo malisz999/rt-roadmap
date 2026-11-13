@@ -64,7 +64,8 @@ def months_between(a, b):  # inclusive count from month a to month b
 
 def run(path, on_conflict=None, hfrom=None, hto=None):
     y = YAML()  # round-trip loader, YAML 1.2
-    doc = y.load(open(path, encoding="utf-8"))
+    with open(path, encoding="utf-8") as fh:  # closed at once: Windows cannot delete an open file
+        doc = y.load(fh)
     sizes = dict(doc["sizes"])
     sched = doc.get("scheduling") or {}
     mode = on_conflict or sched.get("on_conflict", "delay")
@@ -417,4 +418,5 @@ if __name__ == "__main__":
         k, v = a.split("=")
         kw[k] = v
     res = run(path, **kw)
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # same bytes on every OS (Windows: cp1252, CRLF)
     print(json.dumps(res, indent=2, ensure_ascii=False))

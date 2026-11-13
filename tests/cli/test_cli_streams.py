@@ -200,6 +200,7 @@ def test_at_44_closed_pipe(stress_file: Path) -> None:
 
 
 @pytest.mark.skipif(shutil.which("bash") is None or shutil.which("head") is None, reason="needs bash and head")
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell: exit 141 is SIGPIPE; bash on Windows runners is WSL")
 def test_at_44_closed_pipe_shell(stress_file: Path) -> None:
     """AT-44 exactly as written: ${PIPESTATUS[0]} of `rt render stress.yaml -o - | head -c 1` is 141."""
     cmd = " ".join(f"'{c}'" for c in rt_cmd(["render", stress_file.name, "-o", "-"]))

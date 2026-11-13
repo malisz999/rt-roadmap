@@ -1,0 +1,9 @@
+# Check out text files with LF on every OS: rt writes LF (RS ST-4), the expected files are byte contracts, and the
+# Windows binary must bundle LF resources (rt init). Without this, Git on Windows converts them to CRLF.
+* text=auto eol=lf
+
+# Byte-exact test data: projects.pl.csv deliberately has CRLF line endings and a BOM (RS 3.4 example).
+*.csv -text
+
+*.png binary
+*.pdf binary

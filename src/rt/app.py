@@ -41,10 +41,12 @@ def default_html_output(input_spec: str) -> str:
     """RS 6.2: the input path with `.html` instead of its suffix; stdout when the input is stdin."""
     if input_spec == "-":
         return "-"
-    from pathlib import PurePath
-
-    path = PurePath(input_spec)
-    return str(path.with_suffix(".html")) if path.suffix else input_spec + ".html"
+    # String-based so the user's own separators survive (`a/roadmap.yaml` stays `a/roadmap.html` on Windows).
+    name_start = max(input_spec.rfind("/"), input_spec.rfind("\\")) + 1
+    dot = input_spec.rfind(".")
+    if name_start < dot < len(input_spec) - 1:  # a suffix, as PurePath.suffix defines it
+        return input_spec[:dot] + ".html"
+    return input_spec + ".html"
 
 
 def _error_text(exc: OSError) -> str:

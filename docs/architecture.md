@@ -578,10 +578,10 @@ The distribution name `rt-roadmap` avoids clashing with short names on PyPI (con
 | Job | Runs on | Steps | Blocks merge |
 | --- | --- | --- | --- |
 | `lint` | ubuntu | `ruff check`, `ruff format --check`, `mypy` | Yes |
-| `test` | ubuntu, macOS 14 (arm64), Windows × Python 3.12, 3.13 | `pytest -m "not slow" --cov`, coverage ≥ 90 % on core packages | Yes |
+| `test` | ubuntu, macOS 15 (arm64), Windows × Python 3.12, 3.13 | `pytest -m "not slow" --cov`, coverage ≥ 90 % on core packages | Yes |
 | `perf` | ubuntu | `pytest -m slow` (RS NF-3) | Yes |
-| `traceability` | ubuntu | Every AT-01…AT-74 has a test | Yes |
-| `release` (tag `v*`) | ubuntu, macOS (arm64, x86-64), Windows | Build wheel and sdist; PyInstaller `--onefile` binaries; smoke-test each binary with `rt render` on the three fixtures; screenshot job for human approval; publish | — |
+| `traceability` | ubuntu | Every AT-01…AT-86 has a test | Yes |
+| `release` (tag `v*`, or run by hand) | Linux x86-64 in `manylinux_2_28` (glibc 2.28), macOS 15 (arm64), Windows x86-64 | Tests; wheel and sdist; PyInstaller `--onefile` binaries, each smoke-tested with `--version` and `rt render` on four fixtures; on a tag, a **draft** GitHub Release with all files and `SHA256SUMS` that a human reviews and publishes (replaces the screenshot approval job; `tools/screenshots.py` is run by hand). Binaries are unsigned | — |
 
 Core packages for the coverage gate: `model`, `schedule`, `color`, `plan`, `layout`, `diagnostics` (RS NF-8).
 

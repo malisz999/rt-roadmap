@@ -1,11 +1,18 @@
-# Release pipeline (ADS 11.3, ADR-12): wheel + sdist, single-file binaries per OS, screenshot review, publish.
-# Triggered by pushing a tag v*. Publishing waits for a human to approve the "release" environment after looking
-# at the screenshot artifact (RS AT-25, NF-6).
+# Release pipeline (ADS 11.3, ADR-12): wheel + sdist and single-file rt binaries for macOS (arm64), Linux (x86_64)
+# and Windows (x86_64).
+#   - Push a tag v* (e.g. v1.3.0): everything is built, smoke-tested and attached to a DRAFT GitHub Release.
+#     Review it on GitHub, then click "Publish release".
+#   - "Run workflow" (workflow_dispatch): the same build, files only (download them from the run's artifacts).
+# Binaries are not code-signed: the release notes explain the macOS and Windows first-run warnings.
 name: release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -29,12 +36,39 @@ jobs:
           name: dist
           path: dist/*
 
+  # Linux: built inside manylinux_2_28 (AlmaLinux 8, glibc 2.28) so the binary runs on most distributions from
+  # about 2019 on (RHEL/Alma/Rocky 8+, Debian 11+, Ubuntu 20.04+). uv's own Python is used: it ships the shared
+  # libpython that PyInstaller needs (the manylinux interpreters are static).
+  linux:
+    needs: test
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    env:
+      UV_PYTHON_PREFERENCE: only-managed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: uv run --with pyinstaller python tools/build_binary.py --dist binaries
+      - run: ldd --version | head -1 && file binaries/* || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-linux-x86_64
+          path: binaries/*
+
+  # macOS arm64 and Windows x86_64: native runners.
   binaries:
     needs: test
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, macos-15-intel, windows-latest]
+        include:
+          - os: macos-15
+            name: macos-arm64
+          - os: windows-latest
+            name: windows-x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -42,46 +76,36 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --locked
-      # Builds rt-<version>-<os>-<arch> and smoke-tests it on the four fixtures.
+      # Builds rt-<version>-<os>-<arch>[.exe] and smoke-tests it: --version and rendering four fixtures.
       - run: uv run --with pyinstaller python tools/build_binary.py --dist binaries
       - uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.os }}
+          name: binary-${{ matrix.name }}
           path: binaries/*
 
-  screenshots:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv sync --locked
-      - run: uv run --with playwright python -m playwright install --with-deps chromium firefox webkit
-      # EX, WE, DE in Chromium, Firefox and WebKit, light and dark, plus the A3 print PDF.
-      - run: uv run --with playwright python tools/screenshots.py --out screenshots
-      - uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: screenshots/*
-
   publish:
-    needs: [dist, binaries, screenshots]
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [dist, linux, binaries]
     runs-on: ubuntu-latest
-    environment: release   # requires manual approval after reviewing the screenshots artifact
     permissions:
       contents: write
-      id-token: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: GitHub release with wheel, sdist and binaries
+          merge-multiple: true
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Draft GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
-          artifacts/dist/* artifacts/binary-*/*
+          gh release create "$GITHUB_REF_NAME" artifacts/*
+          --repo "$GITHUB_REPOSITORY" --draft --verify-tag
+          --title "rt ${GITHUB_REF_NAME#v}"
+          --notes-file .github/release-notes.md
       # PyPI: the distribution name rt-roadmap is still to be confirmed (ADS 13.2); enable once it is.
       # - uses: pypa/gh-action-pypi-publish@release/v1
       #   with:
-      #     packages-dir: artifacts/dist
+      #     packages-dir: artifacts

@@ -142,7 +142,9 @@ def run_rt(
         check=False,
         **kwargs,
     )
-    return Result([str(a) for a in args], proc.returncode, proc.stdout, proc.stderr.decode("utf-8", "replace"))
+    # stderr is human text: Windows writes it with CRLF; compare messages line by line as LF.
+    stderr = proc.stderr.decode("utf-8", "replace").replace("\r\n", "\n")
+    return Result([str(a) for a in args], proc.returncode, proc.stdout, stderr)
 
 
 def assert_ok(r: Result) -> None:
